@@ -1,3 +1,5 @@
+mod git_detail;
+
 use serde::Serialize;
 use std::path::Path;
 use std::process::Command;
@@ -289,7 +291,9 @@ pub fn run() {
             get_cpu_info,
             my_custom_command,
             pick_git_repository,
-            get_git_log
+            get_git_log,
+            git_detail::get_commit_files,
+            git_detail::get_commit_file_diff
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
