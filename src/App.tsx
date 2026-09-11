@@ -89,16 +89,16 @@ function buildGraph(commits: GitCommit[]): GraphResult {
   let maxLaneCount = 1;
 
   const rows = commits.map((commit) => {
+    const incomingLanes = lanes
+      .map((value, index) => (value ? index : -1))
+      .filter((index) => index >= 0);
+
     let lane = lanes.indexOf(commit.hash);
 
     if (lane < 0) {
       lane = allocateLane(lanes);
       lanes[lane] = commit.hash;
     }
-
-    const incomingLanes = lanes
-      .map((value, index) => (value ? index : -1))
-      .filter((index) => index >= 0);
 
     const nextLanes = [...lanes];
     nextLanes[lane] = null;
