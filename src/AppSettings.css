@@ -1,0 +1,166 @@
+html {
+  --app-ui-font-size: 13px;
+  --app-mono-font-size: 11px;
+  --density-toolbar-height: 36px;
+  --density-row-y: 5px;
+  --density-control-height: 28px;
+}
+
+html[data-density="compact"] {
+  --density-toolbar-height: 36px;
+  --density-row-y: 5px;
+  --density-control-height: 28px;
+}
+
+html[data-density="comfortable"] {
+  --density-toolbar-height: 40px;
+  --density-row-y: 7px;
+  --density-control-height: 31px;
+}
+
+html[data-density="spacious"] {
+  --density-toolbar-height: 44px;
+  --density-row-y: 9px;
+  --density-control-height: 34px;
+}
+
+body,
+#root,
+.app-frame {
+  font-size: var(--app-ui-font-size);
+}
+
+h1,
+.commit-message,
+.detail-message,
+.detail-placeholder strong,
+.settings-page-heading h2 {
+  font-size: calc(var(--app-ui-font-size) + 1px) !important;
+}
+
+.primary-button,
+.secondary-button,
+.repository-list-empty button,
+.view-tabs button,
+.repository-text strong,
+.history-header,
+.changes-toolbar,
+.branches-toolbar,
+.git-info-toolbar,
+.log-filter-bar input,
+.log-filter-bar select,
+.log-filter-actions .compact-button,
+.changed-file,
+.changes-file-main,
+.changes-file-actions button,
+.branch-actions button,
+.branch-name-line strong,
+.branches-controls input,
+.new-branch-form .primary-button,
+.git-info-card-title,
+.config-scope-summary button,
+.settings-cache-meta,
+.ui-preference-button {
+  font-size: calc(var(--app-ui-font-size) - 2px) !important;
+}
+
+.repo-meta,
+.repository-sidebar-header strong,
+.repository-sidebar-header span,
+.repository-text small,
+.history-header span,
+.loading-text,
+.commit-details,
+.detail-meta,
+.detail-section-title,
+.changes-group-title,
+.branch-section-title,
+.branch-subject,
+.branch-meta,
+.git-info-row > span:first-child,
+.git-remote-item span,
+.config-scope-summary span,
+.config-scope-explainer,
+.git-config-note,
+.git-info-card-title small,
+.settings-readonly-badge,
+.filter-active-badge,
+.ref-badge,
+.merge-badge,
+.current-label {
+  font-size: calc(var(--app-ui-font-size) - 3px) !important;
+}
+
+.repo-path,
+.commit-details code,
+.detail-meta code,
+.file-path,
+.diff-viewer,
+.branch-meta code,
+.git-remote-item code,
+.git-config-table code,
+.font-size-control span {
+  font-size: var(--app-mono-font-size) !important;
+}
+
+.topbar {
+  min-height: calc(var(--density-toolbar-height) + 22px) !important;
+  height: calc(var(--density-toolbar-height) + 22px) !important;
+  flex-basis: calc(var(--density-toolbar-height) + 22px) !important;
+}
+
+.view-tabs,
+.repository-sidebar-header,
+.history-header,
+.changes-toolbar,
+.branches-toolbar,
+.git-info-toolbar {
+  min-height: var(--density-toolbar-height) !important;
+  height: var(--density-toolbar-height) !important;
+  flex-basis: var(--density-toolbar-height) !important;
+}
+
+.primary-button,
+.secondary-button,
+.repository-list-empty button,
+.log-filter-bar input,
+.log-filter-bar select,
+.branches-controls input,
+.settings-row-control select,
+.ui-preference-button {
+  min-height: var(--density-control-height) !important;
+  height: var(--density-control-height) !important;
+}
+
+.repository-select,
+.changed-file,
+.changes-file-main,
+.branch-row {
+  padding-top: var(--density-row-y) !important;
+  padding-bottom: var(--density-row-y) !important;
+}
+
+.log-filter-bar,
+.branches-controls {
+  padding-top: var(--density-row-y) !important;
+  padding-bottom: var(--density-row-y) !important;
+}
+
+html[data-density="comfortable"] .commit-content {
+  padding-top: 16px;
+  padding-bottom: 15px;
+}
+
+html[data-density="spacious"] .commit-content {
+  padding-top: 18px;
+  padding-bottom: 17px;
+}
+
+/* Keep the application work area aligned with the dynamic toolbar height. */
+.view-tabs + .workspace,
+.workspace,
+.working-tree-shell,
+.branches-shell,
+.git-info-shell {
+  height: calc(100vh - (var(--density-toolbar-height) * 2 + 22px)) !important;
+}
