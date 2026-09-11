@@ -4,7 +4,9 @@ import Branches from "./Branches";
 import CommitDetail from "./CommitDetail";
 import GitInfo from "./GitInfo";
 import RepositorySidebar from "./RepositorySidebar";
+import UiPreferences from "./UiPreferences";
 import WorkingTree from "./WorkingTree";
+import { useI18n } from "./i18n";
 import type {
   GitBranchesResult,
   GitCommit,
@@ -82,19 +84,10 @@ function readSavedActiveRepository(repositories: string[]) {
   return repositories[0] ?? "";
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
 function repositoryName(path: string) {
   const normalized = path.replace(/\\/g, "/");
   const parts = normalized.split("/").filter(Boolean);
-  return parts.length > 0 ? parts[parts.length - 1] : "Git Client";
+  return parts.length > 0 ? parts[parts.length - 1] : "Git Workbench";
 }
 
 function laneX(lane: number) {
@@ -257,6 +250,7 @@ function hasActiveFilters(filters: LogFilters) {
 }
 
 function App() {
+  const { t, formatDate } = useI18n();
   const initialRepositories = useMemo(() => readSavedRepositories(), []);
   const initialRepoPath = useMemo(
     () => readSavedActiveRepository(initialRepositories),
@@ -296,7 +290,7 @@ function App() {
   const startupLoadedRef = useRef(false);
   const logListRef = useRef<HTMLDivElement>(null);
 
-  const title = repoPath ? repositoryName(repoPath) : "Git Client";
+  const title = repoPath ? repositoryName(repoPath) : t("app.name");
   const graph = useMemo(() => buildGraph(commits), [commits]);
   const filtersActive = hasActiveFilters(appliedFilters);
   const currentSession = repoPath
@@ -673,11 +667,10 @@ function App() {
       <main className="app-shell">
         <header className="topbar">
           <div>
-            <div className="eyebrow">TAURI GIT CLIENT</div>
             <h1>{title}</h1>
             <div className="repo-meta">
               <span className="repo-path">
-                {repoPath || "请从左侧添加一个本地 Git 仓库"}
+                {repoPath || t("repositories.emptyDescription")}
               </span>
               {branch && <span className="branch-badge">{branch}</span>}
             </div>
@@ -690,7 +683,7 @@ function App() {
                 onClick={() => void refresh()}
                 disabled={loading}
               >
-                刷新
+                {t("common.refresh")}
               </button>
             )}
             <button
@@ -698,8 +691,9 @@ function App() {
               onClick={() => void addRepository()}
               disabled={loading}
             >
-              Add Repository
+              {t("repositories.add")}
             </button>
+            <UiPreferences />
           </div>
         </header>
 
@@ -707,45 +701,44 @@ function App() {
 
         {!repoPath && !error && (
           <section className="empty-state">
-            <div className="empty-icon">⌘</div>
-            <h2>添加本地 Git 仓库</h2>
-            <p>可以保存多个仓库，并从左侧列表随时切换。</p>
+            <h2>{t("repositories.emptyTitle")}</h2>
+            <p>{t("repositories.emptyDescription")}</p>
             <button className="primary-button" onClick={() => void addRepository()}>
-              Add Repository
+              {t("repositories.add")}
             </button>
           </section>
         )}
 
         {repoPath && (
           <>
-            <nav className="view-tabs" aria-label="Git views">
+            <nav className="view-tabs" aria-label="Git">
               <button
                 type="button"
                 className={activeView === "log" ? "active" : ""}
                 onClick={() => changeView("log")}
               >
-                Log
+                {t("nav.log")}
               </button>
               <button
                 type="button"
                 className={activeView === "changes" ? "active" : ""}
                 onClick={() => changeView("changes")}
               >
-                Local Changes
+                {t("nav.changes")}
               </button>
               <button
                 type="button"
                 className={activeView === "branches" ? "active" : ""}
                 onClick={() => changeView("branches")}
               >
-                Branches
+                {t("nav.branches")}
               </button>
               <button
                 type="button"
                 className={activeView === "info" ? "active" : ""}
                 onClick={() => changeView("info")}
               >
-                Git Info
+                {t("nav.settings")}
               </button>
             </nav>
 
@@ -754,12 +747,12 @@ function App() {
                 <section className="history-panel">
                   <div className="history-header">
                     <div>
-                      <strong>提交记录</strong>
-                      <span>{commits.length} 条</span>
-                      <span>{graph.laneCount} 条活动图轨</span>
-                      {filtersActive && <span className="filter-active-badge">FILTERED</span>}
+                      <strong>{t("log.title")}</strong>
+                      <span>{t("log.count", { count: commits.length })}</span>
+                      <span>{t("log.lanes", { count: graph.laneCount })}</span>
+                      {filtersActive && <span className="filter-active-badge">{t("common.filtered")}</span>}
                     </div>
-                    {loading && <span className="loading-text">正在读取 Git...</span>}
+                    {loading && <span className="loading-text">{t("log.loading")}</span>}
                   </div>
 
                   <div
@@ -772,34 +765,34 @@ function App() {
                     }}
                   >
                     <label>
-                      <span>Message</span>
+                      <span>{t("log.message")}</span>
                       <input
                         type="search"
                         value={logFilters.message}
                         onChange={(event) =>
                           updateLogFilter("message", event.currentTarget.value)
                         }
-                        placeholder="Search commit message"
+                        placeholder={t("log.messagePlaceholder")}
                       />
                     </label>
 
                     <label>
-                      <span>Branch</span>
+                      <span>{t("log.branch")}</span>
                       <select
                         value={logFilters.branch}
                         onChange={(event) =>
                           updateLogFilter("branch", event.currentTarget.value)
                         }
                       >
-                        <option value="">All branches</option>
-                        <optgroup label="Local">
+                        <option value="">{t("log.allBranches")}</option>
+                        <optgroup label={t("common.local")}>
                           {logBranches.local.map((item) => (
                             <option value={item.fullName} key={item.fullName}>
                               {item.current ? `● ${item.name}` : item.name}
                             </option>
                           ))}
                         </optgroup>
-                        <optgroup label="Remote">
+                        <optgroup label={t("common.remote")}>
                           {logBranches.remote.map((item) => (
                             <option value={item.fullName} key={item.fullName}>
                               {item.name}
@@ -810,24 +803,24 @@ function App() {
                     </label>
 
                     <label>
-                      <span>Author</span>
+                      <span>{t("log.author")}</span>
                       <input
                         value={logFilters.author}
                         onChange={(event) =>
                           updateLogFilter("author", event.currentTarget.value)
                         }
-                        placeholder="Name or email"
+                        placeholder={t("log.authorPlaceholder")}
                       />
                     </label>
 
                     <label>
-                      <span>Commit Hash</span>
+                      <span>{t("log.hash")}</span>
                       <input
                         value={logFilters.hash}
                         onChange={(event) =>
                           updateLogFilter("hash", event.currentTarget.value)
                         }
-                        placeholder="e.g. a1b2c3d"
+                        placeholder={t("log.hashPlaceholder")}
                         spellCheck={false}
                       />
                     </label>
@@ -839,7 +832,7 @@ function App() {
                         onClick={() => void applyFilters()}
                         disabled={loading}
                       >
-                        Apply
+                        {t("common.apply")}
                       </button>
                       <button
                         type="button"
@@ -849,16 +842,14 @@ function App() {
                           loading || (!hasActiveFilters(logFilters) && !filtersActive)
                         }
                       >
-                        Clear
+                        {t("common.clear")}
                       </button>
                     </div>
                   </div>
 
                   {!loading && commits.length === 0 ? (
                     <div className="empty-history">
-                      {filtersActive
-                        ? "没有符合当前筛选条件的提交。"
-                        : "当前仓库没有可显示的提交记录。"}
+                      {filtersActive ? t("log.noFilteredResults") : t("log.noCommits")}
                     </div>
                   ) : (
                     <div
@@ -884,7 +875,7 @@ function App() {
                             <span className="commit-content">
                               <span className="commit-title-row">
                                 <span className="commit-message">
-                                  {commit.message || "(无提交说明)"}
+                                  {commit.message || t("common.noCommitMessage")}
                                 </span>
                                 {commit.refs.length > 0 && (
                                   <span className="commit-refs">
@@ -905,7 +896,7 @@ function App() {
                                 <span>{formatDate(commit.date)}</span>
                                 {commit.parents.length > 1 && (
                                   <span className="merge-badge">
-                                    merge · {commit.parents.length} parents
+                                    {t("log.mergeParents", { count: commit.parents.length })}
                                   </span>
                                 )}
                               </span>
