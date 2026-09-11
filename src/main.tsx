@@ -6,6 +6,7 @@ import "./WorkingTree.css";
 import "./Branches.css";
 import "./GitInfoCache.css";
 import "./WorkbenchTheme.css";
+import "./WorkbenchPolish.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
