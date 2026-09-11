@@ -1,4 +1,5 @@
 mod git_detail;
+mod working_tree;
 
 use serde::Serialize;
 use std::path::Path;
@@ -65,7 +66,6 @@ fn get_cpu_info() -> CpuInfo {
     }
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -293,7 +293,13 @@ pub fn run() {
             pick_git_repository,
             get_git_log,
             git_detail::get_commit_files,
-            git_detail::get_commit_file_diff
+            git_detail::get_commit_file_diff,
+            working_tree::get_working_tree,
+            working_tree::get_working_file_diff,
+            working_tree::stage_working_file,
+            working_tree::unstage_working_file,
+            working_tree::discard_working_file,
+            working_tree::commit_staged_changes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
