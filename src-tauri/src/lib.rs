@@ -1,3 +1,4 @@
+mod branches;
 mod git_detail;
 mod working_tree;
 
@@ -299,7 +300,12 @@ pub fn run() {
             working_tree::stage_working_file,
             working_tree::unstage_working_file,
             working_tree::discard_working_file,
-            working_tree::commit_staged_changes
+            working_tree::commit_staged_changes,
+            branches::get_git_branches,
+            branches::checkout_git_branch,
+            branches::checkout_remote_git_branch,
+            branches::create_git_branch,
+            branches::delete_git_branch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
