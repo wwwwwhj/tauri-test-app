@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ACCENT_COLORS, useAppSettings, type AccentColor, type UiDensity } from "./appSettings";
 import { useI18n, type Language } from "./i18n";
 import { useTheme, type ThemeMode } from "./theme";
@@ -189,7 +189,9 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 <SettingRow title={copy.density} description={copy.densityDescription}>
                   <SegmentedControl<UiDensity>
                     value={settings.density}
-                    items={DENSITIES.map((density) => [density, copy[density]])}
+                    items={DENSITIES.map(
+                      (density): readonly [UiDensity, string] => [density, copy[density]],
+                    )}
                     onChange={(density) => updateSettings({ density })}
                   />
                 </SettingRow>
@@ -233,7 +235,7 @@ function SettingRow({
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="settings-row">
