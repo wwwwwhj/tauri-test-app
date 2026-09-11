@@ -1,62 +1,172 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
+interface GitCommit {
+  hash: string;
+  shortHash: string;
+  parents: string[];
+  authorName: string;
+  authorEmail: string;
+  date: string;
+  message: string;
+}
+
+interface GitLogResult {
+  repositoryPath: string;
+  currentBranch: string;
+  commits: GitCommit[];
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-  const [cpuMsg, setCpuMsg] = useState("");
+  const [repoPath, setRepoPath] = useState("");
+  const [branch, setBranch] = useState("");
+  const [commits, setCommits] = useState<GitCommit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  const title = useMemo(() => {
+    if (!repoPath) {
+      return "Git 提交记录";
+    }
+
+    const normalized = repoPath.replace(/\\/g, "/");
+    return normalized.split("/").filter(Boolean).at(-1) ?? "Git 提交记录";
+  }, [repoPath]);
+
+  async function loadGitLog(path: string) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const result = await invoke<GitLogResult>("get_git_log", {
+        repoPath: path,
+        skip: 0,
+        limit: 100,
+      });
+
+      setRepoPath(result.repositoryPath);
+      setBranch(result.currentBranch);
+      setCommits(result.commits);
+    } catch (err) {
+      setError(String(err));
+      setCommits([]);
+      setBranch("");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function cpu_info() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-      setCpuMsg(await invoke("get_cpu_info"));
+  async function selectRepository() {
+    setError("");
+
+    try {
+      const selected = await invoke<string | null>("pick_git_repository");
+      if (!selected) {
+        return;
+      }
+
+      await loadGitLog(selected);
+    } catch (err) {
+      setError(String(err));
+    }
   }
-   function my_custom_command() {
-      invoke('my_custom_command').then((message) => console.log(message));
+
+  async function refresh() {
+    if (!repoPath) {
+      return;
+    }
+
+    await loadGitLog(repoPath);
   }
 
   return (
-    <main className="container">
-        <p>{JSON.stringify(cpuMsg)}</p>
-        <button onClick={cpu_info}>cpu_info</button>
-        <button onClick={my_custom_command}>my_custom_command</button>
+    <main className="app-shell">
+      <header className="topbar">
+        <div>
+          <div className="eyebrow">TAURI GIT VIEWER</div>
+          <h1>{title}</h1>
+          <div className="repo-meta">
+            <span className="repo-path">
+              {repoPath || "请选择一个本地 Git 仓库"}
+            </span>
+            {branch && <span className="branch-badge">{branch}</span>}
+          </div>
+        </div>
 
-      <h1>Welcome to Tauri + React</h1>
+        <div className="actions">
+          {repoPath && (
+            <button className="secondary-button" onClick={refresh} disabled={loading}>
+              刷新
+            </button>
+          )}
+          <button className="primary-button" onClick={selectRepository} disabled={loading}>
+            {repoPath ? "更换仓库" : "选择 Git 仓库"}
+          </button>
+        </div>
+      </header>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      {error && <div className="error-panel">{error}</div>}
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+      {!repoPath && !error && (
+        <section className="empty-state">
+          <div className="empty-icon">⌘</div>
+          <h2>选择一个本地 Git 仓库</h2>
+          <p>程序会调用你系统中的 Git，读取当前分支和最近的提交记录。</p>
+          <button className="primary-button" onClick={selectRepository}>
+            选择目录
+          </button>
+        </section>
+      )}
+
+      {repoPath && (
+        <section className="history-panel">
+          <div className="history-header">
+            <div>
+              <strong>提交记录</strong>
+              <span>{commits.length} 条</span>
+            </div>
+            {loading && <span className="loading-text">正在读取 Git...</span>}
+          </div>
+
+          {!loading && commits.length === 0 ? (
+            <div className="empty-history">当前仓库没有可显示的提交记录。</div>
+          ) : (
+            <div className="commit-list">
+              {commits.map((commit, index) => (
+                <article className="commit-row" key={commit.hash}>
+                  <div className="graph-column" aria-hidden="true">
+                    <span className="commit-dot" />
+                    {index !== commits.length - 1 && <span className="commit-line" />}
+                  </div>
+
+                  <div className="commit-content">
+                    <div className="commit-message">{commit.message || "(无提交说明)"}</div>
+                    <div className="commit-details">
+                      <code title={commit.hash}>{commit.shortHash}</code>
+                      <span>{commit.authorName}</span>
+                      <span title={commit.authorEmail}>{commit.authorEmail}</span>
+                      <span>{formatDate(commit.date)}</span>
+                      {commit.parents.length > 1 && (
+                        <span className="merge-badge">merge</span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }
