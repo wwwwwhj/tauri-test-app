@@ -34,3 +34,23 @@ export interface GitFileDiff {
   content: string;
   truncated: boolean;
 }
+
+export interface WorkingTreeFile {
+  path: string;
+  oldPath: string | null;
+  status: string;
+}
+
+export interface WorkingTreeStatus {
+  staged: WorkingTreeFile[];
+  unstaged: WorkingTreeFile[];
+  untracked: WorkingTreeFile[];
+}
+
+export type WorkingTreeArea = "staged" | "unstaged" | "untracked";
+
+export interface WorkingFileDiff {
+  path: string;
+  content: string;
+  truncated: boolean;
+}
