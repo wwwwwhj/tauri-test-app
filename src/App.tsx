@@ -3,7 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import Branches from "./Branches";
 import CommitDetail from "./CommitDetail";
 import WorkingTree from "./WorkingTree";
-import type { GitCommit, GitLogResult, GitRefInfo } from "./gitTypes";
+import type {
+  GitBranchesResult,
+  GitCommit,
+  GitLogResult,
+  GitRefInfo,
+} from "./gitTypes";
 import "./App.css";
 
 interface GraphRow {
@@ -18,7 +23,21 @@ interface GraphResult {
   laneCount: number;
 }
 
+interface LogFilters {
+  message: string;
+  branch: string;
+  author: string;
+  hash: string;
+}
+
 type AppView = "log" | "changes" | "branches";
+
+const EMPTY_LOG_FILTERS: LogFilters = {
+  message: "",
+  branch: "",
+  author: "",
+  hash: "",
+};
 
 const LANE_WIDTH = 20;
 const GRAPH_SIDE_PADDING = 12;
@@ -199,6 +218,10 @@ function RefBadge({ gitRef }: { gitRef: GitRefInfo }) {
   );
 }
 
+function hasActiveFilters(filters: LogFilters) {
+  return Object.values(filters).some((value) => value.trim().length > 0);
+}
+
 function App() {
   const [repoPath, setRepoPath] = useState("");
   const [branch, setBranch] = useState("");
@@ -207,6 +230,13 @@ function App() {
   const [activeView, setActiveView] = useState<AppView>("log");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [logFilters, setLogFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
+  const [logBranches, setLogBranches] = useState<GitBranchesResult>({
+    currentBranch: "",
+    local: [],
+    remote: [],
+  });
 
   const title = useMemo(() => {
     if (!repoPath) {
@@ -219,8 +249,22 @@ function App() {
   }, [repoPath]);
 
   const graph = useMemo(() => buildGraph(commits), [commits]);
+  const filtersActive = hasActiveFilters(appliedFilters);
 
-  async function loadGitLog(path: string, preserveSelection = false) {
+  async function loadLogBranches(path: string) {
+    try {
+      const result = await invoke<GitBranchesResult>("get_git_branches", { repoPath: path });
+      setLogBranches(result);
+    } catch {
+      setLogBranches({ currentBranch: "", local: [], remote: [] });
+    }
+  }
+
+  async function loadGitLog(
+    path: string,
+    preserveSelection = false,
+    filters: LogFilters = appliedFilters,
+  ) {
     setLoading(true);
     setError("");
 
@@ -229,6 +273,10 @@ function App() {
         repoPath: path,
         skip: 0,
         limit: 100,
+        branchFilter: filters.branch || null,
+        authorFilter: filters.author || null,
+        messageFilter: filters.message || null,
+        hashFilter: filters.hash || null,
       });
 
       setRepoPath(result.repositoryPath);
@@ -241,7 +289,6 @@ function App() {
     } catch (err) {
       setError(String(err));
       setCommits([]);
-      setBranch("");
       setSelectedCommit(null);
     } finally {
       setLoading(false);
@@ -258,7 +305,12 @@ function App() {
       }
 
       setActiveView("log");
-      await loadGitLog(selected);
+      setLogFilters(EMPTY_LOG_FILTERS);
+      setAppliedFilters(EMPTY_LOG_FILTERS);
+      await Promise.all([
+        loadGitLog(selected, false, EMPTY_LOG_FILTERS),
+        loadLogBranches(selected),
+      ]);
     } catch (err) {
       setError(String(err));
     }
@@ -266,7 +318,39 @@ function App() {
 
   async function refresh() {
     if (!repoPath) return;
-    await loadGitLog(repoPath, true);
+    await Promise.all([
+      loadGitLog(repoPath, true, appliedFilters),
+      loadLogBranches(repoPath),
+    ]);
+  }
+
+  async function applyFilters() {
+    if (!repoPath) return;
+    const nextFilters = {
+      message: logFilters.message.trim(),
+      branch: logFilters.branch,
+      author: logFilters.author.trim(),
+      hash: logFilters.hash.trim(),
+    };
+    setAppliedFilters(nextFilters);
+    await loadGitLog(repoPath, false, nextFilters);
+  }
+
+  async function clearFilters() {
+    if (!repoPath) return;
+    setLogFilters(EMPTY_LOG_FILTERS);
+    setAppliedFilters(EMPTY_LOG_FILTERS);
+    await loadGitLog(repoPath, false, EMPTY_LOG_FILTERS);
+  }
+
+  async function handleBranchChanged() {
+    const nextFilters = { ...appliedFilters, branch: "" };
+    setLogFilters((current) => ({ ...current, branch: "" }));
+    setAppliedFilters(nextFilters);
+    await Promise.all([
+      loadGitLog(repoPath, false, nextFilters),
+      loadLogBranches(repoPath),
+    ]);
   }
 
   return (
@@ -342,12 +426,117 @@ function App() {
                     <strong>提交记录</strong>
                     <span>{commits.length} 条</span>
                     <span>{graph.laneCount} 条活动图轨</span>
+                    {filtersActive && <span className="filter-active-badge">FILTERED</span>}
                   </div>
                   {loading && <span className="loading-text">正在读取 Git...</span>}
                 </div>
 
+                <div
+                  className="log-filter-bar"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void applyFilters();
+                    }
+                  }}
+                >
+                  <label>
+                    <span>Message</span>
+                    <input
+                      type="search"
+                      value={logFilters.message}
+                      onChange={(event) =>
+                        setLogFilters((current) => ({
+                          ...current,
+                          message: event.currentTarget.value,
+                        }))
+                      }
+                      placeholder="Search commit message"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Branch</span>
+                    <select
+                      value={logFilters.branch}
+                      onChange={(event) =>
+                        setLogFilters((current) => ({
+                          ...current,
+                          branch: event.currentTarget.value,
+                        }))
+                      }
+                    >
+                      <option value="">All branches</option>
+                      <optgroup label="Local">
+                        {logBranches.local.map((item) => (
+                          <option value={item.fullName} key={item.fullName}>
+                            {item.current ? `● ${item.name}` : item.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Remote">
+                        {logBranches.remote.map((item) => (
+                          <option value={item.fullName} key={item.fullName}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Author</span>
+                    <input
+                      value={logFilters.author}
+                      onChange={(event) =>
+                        setLogFilters((current) => ({
+                          ...current,
+                          author: event.currentTarget.value,
+                        }))
+                      }
+                      placeholder="Name or email"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Commit Hash</span>
+                    <input
+                      value={logFilters.hash}
+                      onChange={(event) =>
+                        setLogFilters((current) => ({
+                          ...current,
+                          hash: event.currentTarget.value,
+                        }))
+                      }
+                      placeholder="e.g. a1b2c3d"
+                      spellCheck={false}
+                    />
+                  </label>
+
+                  <div className="log-filter-actions">
+                    <button
+                      type="button"
+                      className="primary-button compact-button"
+                      onClick={() => void applyFilters()}
+                      disabled={loading}
+                    >
+                      Apply
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button compact-button"
+                      onClick={() => void clearFilters()}
+                      disabled={loading || (!hasActiveFilters(logFilters) && !filtersActive)}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
                 {!loading && commits.length === 0 ? (
-                  <div className="empty-history">当前仓库没有可显示的提交记录。</div>
+                  <div className="empty-history">
+                    {filtersActive ? "没有符合当前筛选条件的提交。" : "当前仓库没有可显示的提交记录。"}
+                  </div>
                 ) : (
                   <div className="commit-list">
                     {graph.rows.map((row) => {
@@ -406,11 +595,14 @@ function App() {
           )}
 
           {activeView === "changes" && (
-            <WorkingTree repoPath={repoPath} onCommitted={() => loadGitLog(repoPath, false)} />
+            <WorkingTree
+              repoPath={repoPath}
+              onCommitted={() => loadGitLog(repoPath, false, appliedFilters)}
+            />
           )}
 
           {activeView === "branches" && (
-            <Branches repoPath={repoPath} onBranchChanged={() => loadGitLog(repoPath, false)} />
+            <Branches repoPath={repoPath} onBranchChanged={handleBranchChanged} />
           )}
         </>
       )}
