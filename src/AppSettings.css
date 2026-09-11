@@ -175,5 +175,5 @@ html[data-diff-line-numbers="hide"] .diff-line-number {
 .working-tree-shell,
 .branches-shell,
 .git-info-shell {
-  height: calc(100vh - (var(--density-toolbar-height) * 2 + 22px)) !important;
+  height: calc(100vh - var(--density-toolbar-height) - var(--density-toolbar-height) - 22px) !important;
 }
