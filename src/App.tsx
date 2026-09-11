@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Branches from "./Branches";
 import CommitDetail from "./CommitDetail";
@@ -10,6 +10,15 @@ import type {
   GitLogResult,
   GitRefInfo,
 } from "./gitTypes";
+import {
+  createDefaultRepositorySession,
+  EMPTY_LOG_FILTERS,
+  loadRepositorySessions,
+  saveRepositorySessions,
+  type AppView,
+  type LogFilters,
+  type RepositorySession,
+} from "./repositorySession";
 import "./App.css";
 import "./LogFilters.css";
 import "./RepositorySidebar.css";
@@ -26,24 +35,8 @@ interface GraphResult {
   laneCount: number;
 }
 
-interface LogFilters {
-  message: string;
-  branch: string;
-  author: string;
-  hash: string;
-}
-
-type AppView = "log" | "changes" | "branches";
-
 const REPOSITORIES_STORAGE_KEY = "tauri-git-client.repositories.v1";
 const ACTIVE_REPOSITORY_STORAGE_KEY = "tauri-git-client.active-repository.v1";
-
-const EMPTY_LOG_FILTERS: LogFilters = {
-  message: "",
-  branch: "",
-  author: "",
-  hash: "",
-};
 
 const LANE_WIDTH = 20;
 const GRAPH_SIDE_PADDING = 12;
@@ -264,27 +257,50 @@ function hasActiveFilters(filters: LogFilters) {
 
 function App() {
   const initialRepositories = useMemo(() => readSavedRepositories(), []);
-  const [repositories, setRepositories] = useState<string[]>(initialRepositories);
-  const [repoPath, setRepoPath] = useState(() =>
-    readSavedActiveRepository(initialRepositories),
+  const initialRepoPath = useMemo(
+    () => readSavedActiveRepository(initialRepositories),
+    [initialRepositories],
   );
+  const initialSessions = useMemo(() => loadRepositorySessions(), []);
+
+  const [repositories, setRepositories] = useState<string[]>(initialRepositories);
+  const [repoPath, setRepoPath] = useState(initialRepoPath);
   const [branch, setBranch] = useState("");
   const [commits, setCommits] = useState<GitCommit[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<GitCommit | null>(null);
-  const [activeView, setActiveView] = useState<AppView>("log");
+  const [activeView, setActiveView] = useState<AppView>(
+    initialRepoPath ? initialSessions[initialRepoPath]?.activeView ?? "log" : "log",
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [logFilters, setLogFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
+  const [logFilters, setLogFilters] = useState<LogFilters>(
+    initialRepoPath
+      ? initialSessions[initialRepoPath]?.logFilters ?? { ...EMPTY_LOG_FILTERS }
+      : { ...EMPTY_LOG_FILTERS },
+  );
+  const [appliedFilters, setAppliedFilters] = useState<LogFilters>(
+    initialRepoPath
+      ? initialSessions[initialRepoPath]?.appliedFilters ?? { ...EMPTY_LOG_FILTERS }
+      : { ...EMPTY_LOG_FILTERS },
+  );
   const [logBranches, setLogBranches] = useState<GitBranchesResult>({
     currentBranch: "",
     local: [],
     remote: [],
   });
 
+  const sessionsRef = useRef(initialSessions);
+  const activeRepositoryRef = useRef(initialRepoPath);
+  const sessionPersistTimerRef = useRef<number | null>(null);
+  const startupLoadedRef = useRef(false);
+  const logListRef = useRef<HTMLDivElement>(null);
+
   const title = repoPath ? repositoryName(repoPath) : "Git Client";
   const graph = useMemo(() => buildGraph(commits), [commits]);
   const filtersActive = hasActiveFilters(appliedFilters);
+  const currentSession = repoPath
+    ? sessionsRef.current[repoPath] ?? createDefaultRepositorySession()
+    : createDefaultRepositorySession();
 
   useEffect(() => {
     localStorage.setItem(REPOSITORIES_STORAGE_KEY, JSON.stringify(repositories));
@@ -299,24 +315,151 @@ function App() {
   }, [repoPath]);
 
   useEffect(() => {
-    if (repoPath) {
-      void activateRepository(repoPath);
-    }
+    if (startupLoadedRef.current || !repoPath) return;
+    startupLoadedRef.current = true;
+    void activateRepository(repoPath);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (sessionPersistTimerRef.current !== null) {
+        window.clearTimeout(sessionPersistTimerRef.current);
+      }
+      saveRepositorySessions(sessionsRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!repoPath || activeView !== "log" || loading || !logListRef.current) return;
+    const element = logListRef.current;
+    const scrollTop = getRepositorySession(repoPath).scroll.log;
+    const frame = requestAnimationFrame(() => {
+      element.scrollTop = scrollTop;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [repoPath, activeView, loading, commits.length]);
+
+  function getRepositorySession(path: string): RepositorySession {
+    const existing = sessionsRef.current[path];
+    if (existing) return existing;
+
+    const created = createDefaultRepositorySession();
+    sessionsRef.current = {
+      ...sessionsRef.current,
+      [path]: created,
+    };
+    return created;
+  }
+
+  function persistSessions(deferred = false) {
+    if (sessionPersistTimerRef.current !== null) {
+      window.clearTimeout(sessionPersistTimerRef.current);
+      sessionPersistTimerRef.current = null;
+    }
+
+    if (!deferred) {
+      saveRepositorySessions(sessionsRef.current);
+      return;
+    }
+
+    sessionPersistTimerRef.current = window.setTimeout(() => {
+      sessionPersistTimerRef.current = null;
+      saveRepositorySessions(sessionsRef.current);
+    }, 120);
+  }
+
+  function updateRepositorySession(
+    path: string,
+    updater: (session: RepositorySession) => RepositorySession,
+    deferred = false,
+  ) {
+    const current = getRepositorySession(path);
+    sessionsRef.current = {
+      ...sessionsRef.current,
+      [path]: updater(current),
+    };
+    persistSessions(deferred);
+  }
 
   function updateLogFilter<K extends keyof LogFilters>(key: K, value: LogFilters[K]) {
     setLogFilters((current) => ({
       ...current,
       [key]: value,
     }));
+
+    if (repoPath) {
+      updateRepositorySession(repoPath, (session) => ({
+        ...session,
+        logFilters: {
+          ...session.logFilters,
+          [key]: value,
+        },
+      }));
+    }
   }
 
-  function resetRepositoryContext() {
+  function changeView(view: AppView) {
+    setActiveView(view);
+    if (!repoPath) return;
+    updateRepositorySession(repoPath, (session) => ({
+      ...session,
+      activeView: view,
+    }));
+  }
+
+  function selectCommit(commit: GitCommit) {
+    setSelectedCommit(commit);
+    if (!repoPath) return;
+    updateRepositorySession(repoPath, (session) => ({
+      ...session,
+      selectedCommitHash: commit.hash,
+    }));
+  }
+
+  function saveLogScroll(scrollTop: number) {
+    if (!repoPath) return;
+    updateRepositorySession(
+      repoPath,
+      (session) => ({
+        ...session,
+        scroll: { ...session.scroll, log: scrollTop },
+      }),
+      true,
+    );
+  }
+
+  function saveChangesScroll(scrollTop: number) {
+    if (!repoPath) return;
+    updateRepositorySession(
+      repoPath,
+      (session) => ({
+        ...session,
+        scroll: { ...session.scroll, changes: scrollTop },
+      }),
+      true,
+    );
+  }
+
+  function saveBranchesScroll(position: { local: number; remote: number }) {
+    if (!repoPath) return;
+    updateRepositorySession(
+      repoPath,
+      (session) => ({
+        ...session,
+        scroll: {
+          ...session.scroll,
+          branchesLocal: position.local,
+          branchesRemote: position.remote,
+        },
+      }),
+      true,
+    );
+  }
+
+  function clearVisibleRepositoryContext() {
     setBranch("");
     setCommits([]);
     setSelectedCommit(null);
-    setLogFilters(EMPTY_LOG_FILTERS);
-    setAppliedFilters(EMPTY_LOG_FILTERS);
     setLogBranches({ currentBranch: "", local: [], remote: [] });
     setError("");
   }
@@ -324,16 +467,18 @@ function App() {
   async function loadLogBranches(path: string) {
     try {
       const result = await invoke<GitBranchesResult>("get_git_branches", { repoPath: path });
+      if (activeRepositoryRef.current !== path) return;
       setLogBranches(result);
     } catch {
+      if (activeRepositoryRef.current !== path) return;
       setLogBranches({ currentBranch: "", local: [], remote: [] });
     }
   }
 
   async function loadGitLog(
     path: string,
-    preserveSelection = false,
-    filters: LogFilters = appliedFilters,
+    filters: LogFilters,
+    selectedHash: string | null = null,
   ) {
     setLoading(true);
     setError("");
@@ -349,30 +494,45 @@ function App() {
         hashFilter: filters.hash || null,
       });
 
-      setRepoPath(result.repositoryPath);
+      if (activeRepositoryRef.current !== path) return;
+
       setBranch(result.currentBranch);
       setCommits(result.commits);
-      setSelectedCommit((current) => {
-        if (!preserveSelection || !current) return null;
-        return result.commits.find((commit) => commit.hash === current.hash) ?? null;
-      });
+      const restoredCommit = selectedHash
+        ? result.commits.find((commit) => commit.hash === selectedHash) ?? null
+        : null;
+      setSelectedCommit(restoredCommit);
+
+      if (selectedHash && !restoredCommit) {
+        updateRepositorySession(path, (session) => ({
+          ...session,
+          selectedCommitHash: null,
+        }));
+      }
     } catch (err) {
+      if (activeRepositoryRef.current !== path) return;
       setError(String(err));
       setCommits([]);
       setBranch("");
       setSelectedCommit(null);
     } finally {
-      setLoading(false);
+      if (activeRepositoryRef.current === path) {
+        setLoading(false);
+      }
     }
   }
 
   async function activateRepository(path: string) {
-    resetRepositoryContext();
+    const session = getRepositorySession(path);
+    activeRepositoryRef.current = path;
     setRepoPath(path);
-    setActiveView("log");
+    clearVisibleRepositoryContext();
+    setActiveView(session.activeView);
+    setLogFilters({ ...session.logFilters });
+    setAppliedFilters({ ...session.appliedFilters });
 
     await Promise.all([
-      loadGitLog(path, false, EMPTY_LOG_FILTERS),
+      loadGitLog(path, session.appliedFilters, session.selectedCommitHash),
       loadLogBranches(path),
     ]);
   }
@@ -387,6 +547,8 @@ function App() {
       setRepositories((current) =>
         current.includes(selected) ? current : [...current, selected],
       );
+      getRepositorySession(selected);
+      persistSessions();
       await activateRepository(selected);
     } catch (err) {
       setError(String(err));
@@ -394,13 +556,17 @@ function App() {
   }
 
   async function switchRepository(path: string) {
-    if (path === repoPath && commits.length > 0) return;
+    if (path === repoPath) return;
     await activateRepository(path);
   }
 
   function removeRepository(path: string) {
     const remaining = repositories.filter((item) => item !== path);
     setRepositories(remaining);
+
+    const { [path]: _removed, ...remainingSessions } = sessionsRef.current;
+    sessionsRef.current = remainingSessions;
+    persistSessions();
 
     if (path !== repoPath) return;
 
@@ -410,44 +576,84 @@ function App() {
       return;
     }
 
-    resetRepositoryContext();
+    activeRepositoryRef.current = "";
+    clearVisibleRepositoryContext();
     setRepoPath("");
     setActiveView("log");
+    setLogFilters({ ...EMPTY_LOG_FILTERS });
+    setAppliedFilters({ ...EMPTY_LOG_FILTERS });
   }
 
   async function refresh() {
     if (!repoPath) return;
+    const session = getRepositorySession(repoPath);
     await Promise.all([
-      loadGitLog(repoPath, true, appliedFilters),
+      loadGitLog(repoPath, appliedFilters, selectedCommit?.hash ?? session.selectedCommitHash),
       loadLogBranches(repoPath),
     ]);
   }
 
   async function applyFilters() {
     if (!repoPath) return;
-    const nextFilters = {
+    const nextFilters: LogFilters = {
       message: logFilters.message.trim(),
       branch: logFilters.branch,
       author: logFilters.author.trim(),
       hash: logFilters.hash.trim(),
     };
+
+    setLogFilters(nextFilters);
     setAppliedFilters(nextFilters);
-    await loadGitLog(repoPath, false, nextFilters);
+    setSelectedCommit(null);
+    if (logListRef.current) logListRef.current.scrollTop = 0;
+
+    updateRepositorySession(repoPath, (session) => ({
+      ...session,
+      logFilters: { ...nextFilters },
+      appliedFilters: { ...nextFilters },
+      selectedCommitHash: null,
+      scroll: { ...session.scroll, log: 0 },
+    }));
+
+    await loadGitLog(repoPath, nextFilters, null);
   }
 
   async function clearFilters() {
     if (!repoPath) return;
-    setLogFilters(EMPTY_LOG_FILTERS);
-    setAppliedFilters(EMPTY_LOG_FILTERS);
-    await loadGitLog(repoPath, false, EMPTY_LOG_FILTERS);
+    const cleared = { ...EMPTY_LOG_FILTERS };
+    setLogFilters(cleared);
+    setAppliedFilters(cleared);
+    setSelectedCommit(null);
+    if (logListRef.current) logListRef.current.scrollTop = 0;
+
+    updateRepositorySession(repoPath, (session) => ({
+      ...session,
+      logFilters: { ...cleared },
+      appliedFilters: { ...cleared },
+      selectedCommitHash: null,
+      scroll: { ...session.scroll, log: 0 },
+    }));
+
+    await loadGitLog(repoPath, cleared, null);
   }
 
   async function handleBranchChanged() {
+    if (!repoPath) return;
     const nextFilters = { ...appliedFilters, branch: "" };
-    setLogFilters((current) => ({ ...current, branch: "" }));
+    const nextDraft = { ...logFilters, branch: "" };
+    setLogFilters(nextDraft);
     setAppliedFilters(nextFilters);
+    setSelectedCommit(null);
+
+    updateRepositorySession(repoPath, (session) => ({
+      ...session,
+      logFilters: nextDraft,
+      appliedFilters: nextFilters,
+      selectedCommitHash: null,
+    }));
+
     await Promise.all([
-      loadGitLog(repoPath, false, nextFilters),
+      loadGitLog(repoPath, nextFilters, null),
       loadLogBranches(repoPath),
     ]);
   }
@@ -478,11 +684,19 @@ function App() {
 
           <div className="actions">
             {repoPath && activeView === "log" && (
-              <button className="secondary-button" onClick={() => void refresh()} disabled={loading}>
+              <button
+                className="secondary-button"
+                onClick={() => void refresh()}
+                disabled={loading}
+              >
                 刷新
               </button>
             )}
-            <button className="primary-button" onClick={() => void addRepository()} disabled={loading}>
+            <button
+              className="primary-button"
+              onClick={() => void addRepository()}
+              disabled={loading}
+            >
               Add Repository
             </button>
           </div>
@@ -507,21 +721,21 @@ function App() {
               <button
                 type="button"
                 className={activeView === "log" ? "active" : ""}
-                onClick={() => setActiveView("log")}
+                onClick={() => changeView("log")}
               >
                 Log
               </button>
               <button
                 type="button"
                 className={activeView === "changes" ? "active" : ""}
-                onClick={() => setActiveView("changes")}
+                onClick={() => changeView("changes")}
               >
                 Local Changes
               </button>
               <button
                 type="button"
                 className={activeView === "branches" ? "active" : ""}
-                onClick={() => setActiveView("branches")}
+                onClick={() => changeView("branches")}
               >
                 Branches
               </button>
@@ -623,7 +837,9 @@ function App() {
                         type="button"
                         className="secondary-button compact-button"
                         onClick={() => void clearFilters()}
-                        disabled={loading || (!hasActiveFilters(logFilters) && !filtersActive)}
+                        disabled={
+                          loading || (!hasActiveFilters(logFilters) && !filtersActive)
+                        }
                       >
                         Clear
                       </button>
@@ -637,7 +853,11 @@ function App() {
                         : "当前仓库没有可显示的提交记录。"}
                     </div>
                   ) : (
-                    <div className="commit-list">
+                    <div
+                      ref={logListRef}
+                      className="commit-list"
+                      onScroll={(event) => saveLogScroll(event.currentTarget.scrollTop)}
+                    >
                       {graph.rows.map((row) => {
                         const commit = row.commit;
                         const selected = selectedCommit?.hash === commit.hash;
@@ -647,7 +867,7 @@ function App() {
                             type="button"
                             className={`commit-row${selected ? " selected" : ""}`}
                             key={commit.hash}
-                            onClick={() => setSelectedCommit(commit)}
+                            onClick={() => selectCommit(commit)}
                           >
                             <span className="graph-column">
                               <CommitGraph row={row} laneCount={graph.laneCount} />
@@ -696,12 +916,22 @@ function App() {
             {activeView === "changes" && (
               <WorkingTree
                 repoPath={repoPath}
-                onCommitted={() => loadGitLog(repoPath, false, appliedFilters)}
+                initialScrollTop={currentSession.scroll.changes}
+                onScrollTopChange={saveChangesScroll}
+                onCommitted={() => loadGitLog(repoPath, appliedFilters, null)}
               />
             )}
 
             {activeView === "branches" && (
-              <Branches repoPath={repoPath} onBranchChanged={handleBranchChanged} />
+              <Branches
+                repoPath={repoPath}
+                initialScrollPosition={{
+                  local: currentSession.scroll.branchesLocal,
+                  remote: currentSession.scroll.branchesRemote,
+                }}
+                onScrollPositionChange={saveBranchesScroll}
+                onBranchChanged={handleBranchChanged}
+              />
             )}
           </>
         )}
