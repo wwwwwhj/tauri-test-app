@@ -277,7 +277,7 @@ fn read_effective_config(
 ) -> Result<Vec<GitConfigEntry>, String> {
     let scoped_output = command_output(
         path,
-        &["config", "--show-scope", "--show-origin", "--get-all", key],
+        &["config", "--show-scope", "--show-origin", "--get", key],
     )?;
 
     if scoped_output.status.success() {
@@ -292,7 +292,7 @@ fn read_effective_config(
 
     // Git versions before --show-scope are still supported. Fall back to
     // origin-based classification using the independently read local/global layers.
-    let Some(output) = run_git_optional(path, &["config", "--show-origin", "--get-all", key])? else {
+    let Some(output) = run_git_optional(path, &["config", "--show-origin", "--get", key])? else {
         return Ok(Vec::new());
     };
 
