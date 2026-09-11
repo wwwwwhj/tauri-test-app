@@ -252,6 +252,13 @@ function App() {
   const graph = useMemo(() => buildGraph(commits), [commits]);
   const filtersActive = hasActiveFilters(appliedFilters);
 
+  function updateLogFilter<K extends keyof LogFilters>(key: K, value: LogFilters[K]) {
+    setLogFilters((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
   async function loadLogBranches(path: string) {
     try {
       const result = await invoke<GitBranchesResult>("get_git_branches", { repoPath: path });
@@ -447,10 +454,7 @@ function App() {
                       type="search"
                       value={logFilters.message}
                       onChange={(event) =>
-                        setLogFilters((current) => ({
-                          ...current,
-                          message: event.currentTarget.value,
-                        }))
+                        updateLogFilter("message", event.currentTarget.value)
                       }
                       placeholder="Search commit message"
                     />
@@ -461,10 +465,7 @@ function App() {
                     <select
                       value={logFilters.branch}
                       onChange={(event) =>
-                        setLogFilters((current) => ({
-                          ...current,
-                          branch: event.currentTarget.value,
-                        }))
+                        updateLogFilter("branch", event.currentTarget.value)
                       }
                     >
                       <option value="">All branches</option>
@@ -490,10 +491,7 @@ function App() {
                     <input
                       value={logFilters.author}
                       onChange={(event) =>
-                        setLogFilters((current) => ({
-                          ...current,
-                          author: event.currentTarget.value,
-                        }))
+                        updateLogFilter("author", event.currentTarget.value)
                       }
                       placeholder="Name or email"
                     />
@@ -504,10 +502,7 @@ function App() {
                     <input
                       value={logFilters.hash}
                       onChange={(event) =>
-                        setLogFilters((current) => ({
-                          ...current,
-                          hash: event.currentTarget.value,
-                        }))
+                        updateLogFilter("hash", event.currentTarget.value)
                       }
                       placeholder="e.g. a1b2c3d"
                       spellCheck={false}
