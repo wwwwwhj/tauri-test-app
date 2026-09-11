@@ -1,0 +1,35 @@
+.ui-preferences {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-left: 2px;
+}
+
+.ui-preference-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  background: var(--wb-panel);
+  color: var(--wb-muted);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ui-preference-button:hover {
+  background: var(--wb-hover);
+  color: var(--wb-text);
+}
+
+.ui-preference-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.language-toggle {
+  font-family: var(--ui-font);
+}
