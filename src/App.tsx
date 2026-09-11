@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import Branches from "./Branches";
 import CommitDetail from "./CommitDetail";
 import WorkingTree from "./WorkingTree";
 import type { GitCommit, GitLogResult, GitRefInfo } from "./gitTypes";
@@ -17,7 +18,7 @@ interface GraphResult {
   laneCount: number;
 }
 
-type AppView = "log" | "changes";
+type AppView = "log" | "changes" | "branches";
 
 const LANE_WIDTH = 20;
 const GRAPH_SIDE_PADDING = 12;
@@ -300,7 +301,7 @@ function App() {
         <section className="empty-state">
           <div className="empty-icon">⌘</div>
           <h2>选择一个本地 Git 仓库</h2>
-          <p>查看 Git Graph、提交 Diff，并管理本地 Working Tree。</p>
+          <p>查看 Git Graph、提交 Diff，管理 Working Tree 和分支。</p>
           <button className="primary-button" onClick={() => void selectRepository()}>
             选择目录
           </button>
@@ -324,9 +325,16 @@ function App() {
             >
               Local Changes
             </button>
+            <button
+              type="button"
+              className={activeView === "branches" ? "active" : ""}
+              onClick={() => setActiveView("branches")}
+            >
+              Branches
+            </button>
           </nav>
 
-          {activeView === "log" ? (
+          {activeView === "log" && (
             <section className="workspace">
               <section className="history-panel">
                 <div className="history-header">
@@ -395,8 +403,14 @@ function App() {
 
               <CommitDetail repoPath={repoPath} commit={selectedCommit} />
             </section>
-          ) : (
+          )}
+
+          {activeView === "changes" && (
             <WorkingTree repoPath={repoPath} onCommitted={() => loadGitLog(repoPath, false)} />
+          )}
+
+          {activeView === "branches" && (
+            <Branches repoPath={repoPath} onBranchChanged={() => loadGitLog(repoPath, false)} />
           )}
         </>
       )}
