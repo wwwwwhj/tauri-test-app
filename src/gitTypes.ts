@@ -54,3 +54,20 @@ export interface WorkingFileDiff {
   content: string;
   truncated: boolean;
 }
+
+export interface GitBranch {
+  name: string;
+  fullName: string;
+  hash: string;
+  current: boolean;
+  remote: boolean;
+  upstream: string | null;
+  date: string;
+  subject: string;
+}
+
+export interface GitBranchesResult {
+  currentBranch: string;
+  local: GitBranch[];
+  remote: GitBranch[];
+}
