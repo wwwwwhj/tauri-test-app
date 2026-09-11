@@ -16,6 +16,14 @@ struct CpuInfo {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct GitRefInfo {
+    name: String,
+    kind: String,
+    current: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct GitCommit {
     hash: String,
     short_hash: String,
@@ -24,6 +32,7 @@ struct GitCommit {
     author_email: String,
     date: String,
     message: String,
+    refs: Vec<GitRefInfo>,
 }
 
 #[derive(Debug, Serialize)]
@@ -113,14 +122,23 @@ async fn get_git_log(
     };
 
     let skip = skip.unwrap_or(0);
-    let limit = limit.unwrap_or(50).clamp(1, 500);
+    let limit = limit.unwrap_or(100).clamp(1, 500);
     let skip_arg = format!("--skip={skip}");
     let limit_arg = format!("-n{limit}");
-    let format_arg = "--pretty=format:%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1e";
+    let format_arg =
+        "--pretty=format:%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%D%x1e";
 
     let output = run_git(
         path,
-        &["log", &skip_arg, &limit_arg, format_arg],
+        &[
+            "log",
+            "--all",
+            "--topo-order",
+            "--decorate=full",
+            &skip_arg,
+            &limit_arg,
+            format_arg,
+        ],
     )?;
 
     let commits = output
@@ -132,7 +150,7 @@ async fn get_git_log(
             }
 
             let fields: Vec<&str> = record.split('\x1f').collect();
-            if fields.len() != 7 {
+            if fields.len() != 8 {
                 return None;
             }
 
@@ -147,6 +165,7 @@ async fn get_git_log(
                 author_email: fields[4].to_string(),
                 date: fields[5].to_string(),
                 message: fields[6].to_string(),
+                refs: parse_git_refs(fields[7], &current_branch),
             })
         })
         .collect();
@@ -156,6 +175,66 @@ async fn get_git_log(
         current_branch,
         commits,
     })
+}
+
+fn parse_git_refs(value: &str, current_branch: &str) -> Vec<GitRefInfo> {
+    let mut refs = Vec::new();
+
+    for raw in value.split(',').map(str::trim).filter(|value| !value.is_empty()) {
+        if let Some(target) = raw.strip_prefix("HEAD -> ") {
+            let name = target.strip_prefix("refs/heads/").unwrap_or(target).to_string();
+            refs.push(GitRefInfo {
+                current: true,
+                kind: "branch".to_string(),
+                name,
+            });
+            continue;
+        }
+
+        if raw == "HEAD" {
+            refs.push(GitRefInfo {
+                name: "HEAD".to_string(),
+                kind: "head".to_string(),
+                current: true,
+            });
+            continue;
+        }
+
+        if let Some(name) = raw.strip_prefix("tag: refs/tags/") {
+            refs.push(GitRefInfo {
+                name: name.to_string(),
+                kind: "tag".to_string(),
+                current: false,
+            });
+            continue;
+        }
+
+        if let Some(name) = raw.strip_prefix("refs/heads/") {
+            refs.push(GitRefInfo {
+                name: name.to_string(),
+                kind: "branch".to_string(),
+                current: name == current_branch,
+            });
+            continue;
+        }
+
+        if let Some(name) = raw.strip_prefix("refs/remotes/") {
+            refs.push(GitRefInfo {
+                name: name.to_string(),
+                kind: "remote".to_string(),
+                current: false,
+            });
+            continue;
+        }
+
+        refs.push(GitRefInfo {
+            name: raw.to_string(),
+            kind: "ref".to_string(),
+            current: false,
+        });
+    }
+
+    refs
 }
 
 fn validate_git_repository(path: &Path) -> Result<(), String> {
