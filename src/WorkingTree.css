@@ -1,0 +1,377 @@
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px 0 14px;
+  border-bottom: 1px solid #d0d7de;
+}
+
+.view-tabs button {
+  position: relative;
+  border: 0;
+  padding: 9px 14px 10px;
+  background: transparent;
+  color: #57606a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-tabs button:hover {
+  color: #24292f;
+}
+
+.view-tabs button.active {
+  color: #24292f;
+}
+
+.view-tabs button.active::after {
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #fd8c73;
+  content: "";
+}
+
+.view-tabs + .workspace {
+  height: calc(100vh - 178px);
+}
+
+.working-tree-shell {
+  display: grid;
+  grid-template-columns: minmax(380px, 0.8fr) minmax(520px, 1.2fr);
+  gap: 16px;
+  height: calc(100vh - 178px);
+  min-height: 520px;
+}
+
+.changes-panel,
+.working-diff-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #d0d7de;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(31, 35, 40, 0.04);
+}
+
+.changes-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.working-diff-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.changes-toolbar {
+  display: flex;
+  min-height: 52px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 0 15px;
+  border-bottom: 1px solid #d8dee4;
+  background: #f6f8fa;
+}
+
+.changes-toolbar > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.changes-toolbar span {
+  color: #6e7781;
+  font-size: 12px;
+}
+
+.compact-button {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.changes-notice {
+  flex: 0 0 auto;
+  max-height: 72px;
+  overflow: auto;
+  padding: 8px 12px;
+  border-bottom: 1px solid #4ac26b;
+  background: #dafbe1;
+  color: #116329;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+.changes-groups-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.changes-group {
+  border-bottom: 1px solid #d8dee4;
+}
+
+.changes-group-title {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px 0 12px;
+  background: #f6f8fa;
+  color: #24292f;
+  font-size: 12px;
+}
+
+.changes-group-title span {
+  color: #6e7781;
+  font-weight: 400;
+}
+
+.changes-group-empty {
+  padding: 9px 12px;
+  color: #8c959f;
+  font-size: 11px;
+}
+
+.changes-file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-top: 1px solid #f0f1f2;
+}
+
+.changes-file-row:first-child {
+  border-top: 0;
+}
+
+.changes-file-row:hover,
+.changes-file-row.selected {
+  background: #f6f8fa;
+}
+
+.changes-file-row.selected {
+  box-shadow: inset 3px 0 0 #0969da;
+}
+
+.changes-file-main {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  border: 0;
+  padding: 7px 8px 7px 10px;
+  background: transparent;
+  color: #24292f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.changes-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-right: 7px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.changes-file-row:hover .changes-file-actions,
+.changes-file-row.selected .changes-file-actions,
+.changes-file-actions:focus-within {
+  opacity: 1;
+}
+
+.changes-file-actions button {
+  border: 0;
+  border-radius: 5px;
+  padding: 4px 6px;
+  background: transparent;
+  color: #0969da;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.changes-file-actions button:hover:not(:disabled) {
+  background: #ddf4ff;
+}
+
+.changes-file-actions .danger-link {
+  color: #cf222e;
+}
+
+.changes-file-actions .danger-link:hover:not(:disabled) {
+  background: #ffebe9;
+}
+
+.commit-box {
+  flex: 0 0 auto;
+  padding: 10px;
+  border-top: 1px solid #d8dee4;
+  background: #f6f8fa;
+}
+
+.commit-box textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #d0d7de;
+  border-radius: 7px;
+  padding: 8px 10px;
+  outline: none;
+  background: #ffffff;
+  color: #24292f;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.commit-box textarea:focus {
+  border-color: #0969da;
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.12);
+}
+
+.commit-box-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.commit-box-footer span {
+  color: #6e7781;
+  font-size: 11px;
+}
+
+.commit-box-footer .primary-button {
+  padding: 6px 13px;
+  font-size: 12px;
+}
+
+.working-diff-panel > .detail-section-title {
+  min-height: 42px;
+}
+
+.working-diff-panel .diff-viewer {
+  flex: 1;
+}
+
+@media (max-width: 1120px) {
+  .view-tabs + .workspace,
+  .working-tree-shell {
+    height: auto;
+  }
+
+  .working-tree-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .changes-panel {
+    height: min(660px, 72vh);
+  }
+
+  .working-diff-panel {
+    min-height: 620px;
+  }
+}
+
+@media (max-width: 760px) {
+  .changes-file-actions {
+    opacity: 1;
+  }
+
+  .changes-file-row {
+    grid-template-columns: 1fr;
+  }
+
+  .changes-file-actions {
+    justify-content: flex-end;
+    padding: 0 7px 5px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .view-tabs {
+    border-color: #30363d;
+  }
+
+  .view-tabs button {
+    color: #8c959f;
+  }
+
+  .view-tabs button:hover,
+  .view-tabs button.active {
+    color: #e6edf3;
+  }
+
+  .changes-panel,
+  .working-diff-panel,
+  .commit-box textarea {
+    border-color: #30363d;
+    background: #161b22;
+    color: #e6edf3;
+  }
+
+  .changes-toolbar,
+  .changes-group-title,
+  .commit-box {
+    border-color: #30363d;
+    background: #0d1117;
+  }
+
+  .changes-group,
+  .changes-file-row,
+  .commit-box {
+    border-color: #21262d;
+  }
+
+  .changes-group-title,
+  .changes-file-main {
+    color: #e6edf3;
+  }
+
+  .changes-file-row:hover,
+  .changes-file-row.selected {
+    background: #0d1117;
+  }
+
+  .changes-file-row.selected {
+    box-shadow: inset 3px 0 0 #58a6ff;
+  }
+
+  .changes-file-actions button {
+    color: #58a6ff;
+  }
+
+  .changes-file-actions button:hover:not(:disabled) {
+    background: rgba(56, 139, 253, 0.14);
+  }
+
+  .changes-file-actions .danger-link {
+    color: #ff7b72;
+  }
+
+  .changes-file-actions .danger-link:hover:not(:disabled) {
+    background: rgba(248, 81, 73, 0.14);
+  }
+
+  .changes-notice {
+    border-color: #2ea043;
+    background: rgba(46, 160, 67, 0.14);
+    color: #56d364;
+  }
+
+  .commit-box textarea:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 2px rgba(56, 139, 253, 0.14);
+  }
+}
