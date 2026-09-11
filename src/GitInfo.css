@@ -33,6 +33,17 @@
   font-size: 12px;
 }
 
+.settings-readonly-badge {
+  border: 1px solid #afb8c1;
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: #ffffff;
+  color: #57606a !important;
+  font-size: 9px !important;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
 .git-info-content {
   min-height: 0;
   flex: 1;
@@ -187,6 +198,70 @@
   font-size: 10px;
 }
 
+.config-scope-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid #d8dee4;
+}
+
+.config-scope-summary button {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  border: 0;
+  border-right: 1px solid #d8dee4;
+  padding: 11px 13px;
+  background: #ffffff;
+  color: #24292f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.config-scope-summary button:last-child {
+  border-right: 0;
+}
+
+.config-scope-summary button:hover,
+.config-scope-summary button.active {
+  background: #f6f8fa;
+}
+
+.config-scope-summary button.active {
+  box-shadow: inset 0 -2px 0 #0969da;
+}
+
+.config-scope-summary strong {
+  font-size: 12px;
+}
+
+.config-scope-summary span {
+  color: #6e7781;
+  font-size: 10px;
+}
+
+.config-scope-explainer {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 13px;
+  border-bottom: 1px solid #eaeef2;
+  background: #fbfcfd;
+}
+
+.config-scope-explainer strong {
+  color: #24292f;
+  font-size: 11px;
+}
+
+.config-scope-explainer span {
+  color: #57606a;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
 .git-config-note {
   padding: 8px 13px;
   border-bottom: 1px solid #eaeef2;
@@ -220,22 +295,57 @@
   font-weight: 700;
 }
 
-.git-config-table th:nth-child(1) {
-  width: 24%;
+.repository-settings-table th:nth-child(1) {
+  width: 22%;
 }
 
-.git-config-table th:nth-child(2) {
-  width: 28%;
+.repository-settings-table th:nth-child(2) {
+  width: 26%;
 }
 
-.git-config-table th:nth-child(3) {
-  width: 48%;
+.repository-settings-table th:nth-child(3) {
+  width: 14%;
+}
+
+.repository-settings-table th:nth-child(4) {
+  width: 38%;
 }
 
 .git-config-table td code {
   overflow-wrap: anywhere;
   color: #24292f;
   font-size: 10px;
+}
+
+.config-scope-badge {
+  display: inline-flex;
+  border: 1px solid #d0d7de;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #f6f8fa;
+  color: #57606a;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.config-scope-badge.scope-local {
+  border-color: #54aeff;
+  background: #ddf4ff;
+  color: #0550ae;
+}
+
+.config-scope-badge.scope-global {
+  border-color: #a475f9;
+  background: #fbefff;
+  color: #6639ba;
+}
+
+.config-scope-badge.scope-system,
+.config-scope-badge.scope-command,
+.config-scope-badge.scope-worktree {
+  border-color: #d4a72c;
+  background: #fff8c5;
+  color: #633c01;
 }
 
 .git-info-empty,
@@ -269,25 +379,33 @@
     min-height: 620px;
   }
 
-  .git-info-grid {
+  .git-info-grid,
+  .config-scope-summary {
     grid-template-columns: 1fr;
   }
 
   .git-info-row,
   .git-info-row:nth-child(odd),
-  .git-info-row:nth-last-child(-n + 2) {
+  .git-info-row:nth-last-child(-n + 2),
+  .config-scope-summary button {
     border-right: 0;
     border-bottom: 1px solid #f0f1f2;
   }
 
+  .config-scope-explainer {
+    grid-template-columns: 1fr;
+  }
+
   .git-config-table {
-    min-width: 760px;
+    min-width: 900px;
   }
 }
 
 @media (prefers-color-scheme: dark) {
   .git-info-shell,
-  .git-info-card {
+  .git-info-card,
+  .config-scope-summary button,
+  .settings-readonly-badge {
     border-color: #30363d;
     background: #161b22;
   }
@@ -295,7 +413,8 @@
   .git-info-toolbar,
   .git-info-card-title,
   .git-state-strip,
-  .git-config-table th {
+  .git-config-table th,
+  .config-scope-explainer {
     border-color: #30363d;
     background: #0d1117;
   }
@@ -303,7 +422,9 @@
   .git-info-card-title,
   .git-info-value,
   .git-remote-item strong,
-  .git-config-table td code {
+  .git-config-table td code,
+  .config-scope-summary button,
+  .config-scope-explainer strong {
     color: #e6edf3;
   }
 
@@ -311,8 +432,26 @@
   .git-remote-item,
   .git-config-table th,
   .git-config-table td,
-  .git-config-note {
+  .git-config-note,
+  .config-scope-summary,
+  .config-scope-summary button,
+  .config-scope-explainer {
     border-color: #21262d;
+  }
+
+  .config-scope-summary button:hover,
+  .config-scope-summary button.active {
+    background: #0d1117;
+  }
+
+  .config-scope-summary button.active {
+    box-shadow: inset 0 -2px 0 #58a6ff;
+  }
+
+  .config-scope-summary span,
+  .config-scope-explainer span,
+  .settings-readonly-badge {
+    color: #8c959f !important;
   }
 
   .git-state-strip span {
@@ -338,5 +477,31 @@
 
   .git-remote-item code {
     color: #8c959f;
+  }
+
+  .config-scope-badge {
+    border-color: #484f58;
+    background: #21262d;
+    color: #8c959f;
+  }
+
+  .config-scope-badge.scope-local {
+    border-color: #1f6feb;
+    background: rgba(56, 139, 253, 0.15);
+    color: #79c0ff;
+  }
+
+  .config-scope-badge.scope-global {
+    border-color: #8957e5;
+    background: rgba(137, 87, 229, 0.15);
+    color: #d2a8ff;
+  }
+
+  .config-scope-badge.scope-system,
+  .config-scope-badge.scope-command,
+  .config-scope-badge.scope-worktree {
+    border-color: #9e6a03;
+    background: rgba(187, 128, 9, 0.15);
+    color: #e3b341;
   }
 }
