@@ -10,6 +10,8 @@ import type {
 interface WorkingTreeProps {
   repoPath: string;
   onCommitted: () => void | Promise<void>;
+  initialScrollTop?: number;
+  onScrollTopChange?: (scrollTop: number) => void;
 }
 
 interface FileSelection {
@@ -99,7 +101,10 @@ function FileGroup({
             const active = selected?.area === area && selected.file.path === file.path;
 
             return (
-              <div className={`changes-file-row${active ? " selected" : ""}`} key={`${area}-${file.oldPath ?? ""}-${file.path}`}>
+              <div
+                className={`changes-file-row${active ? " selected" : ""}`}
+                key={`${area}-${file.oldPath ?? ""}-${file.path}`}
+              >
                 <button
                   type="button"
                   className="changes-file-main"
@@ -147,7 +152,12 @@ function FileGroup({
   );
 }
 
-export default function WorkingTree({ repoPath, onCommitted }: WorkingTreeProps) {
+export default function WorkingTree({
+  repoPath,
+  onCommitted,
+  initialScrollTop = 0,
+  onScrollTopChange,
+}: WorkingTreeProps) {
   const [status, setStatus] = useState<WorkingTreeStatus>(EMPTY_STATUS);
   const [selected, setSelected] = useState<FileSelection | null>(null);
   const [diff, setDiff] = useState<WorkingFileDiff | null>(null);
@@ -158,6 +168,7 @@ export default function WorkingTree({ repoPath, onCommitted }: WorkingTreeProps)
   const [notice, setNotice] = useState("");
   const [commitMessage, setCommitMessage] = useState("");
   const diffRequestRef = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const diffLines = useMemo(() => (diff ? diff.content.split("\n") : []), [diff]);
   const totalChanges = status.staged.length + status.unstaged.length + status.untracked.length;
@@ -230,6 +241,15 @@ export default function WorkingTree({ repoPath, onCommitted }: WorkingTreeProps)
     setCommitMessage("");
     void loadStatus();
   }, [repoPath]);
+
+  useEffect(() => {
+    if (loadingStatus || !scrollRef.current) return;
+    const element = scrollRef.current;
+    const frame = requestAnimationFrame(() => {
+      element.scrollTop = initialScrollTop;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [repoPath, loadingStatus, initialScrollTop]);
 
   async function stage(file: WorkingTreeFile) {
     setBusy(true);
@@ -320,7 +340,12 @@ export default function WorkingTree({ repoPath, onCommitted }: WorkingTreeProps)
             <strong>Local Changes</strong>
             <span>{loadingStatus ? "Reading…" : `${totalChanges} files`}</span>
           </div>
-          <button type="button" className="secondary-button compact-button" disabled={busy || loadingStatus} onClick={() => void loadStatus()}>
+          <button
+            type="button"
+            className="secondary-button compact-button"
+            disabled={busy || loadingStatus}
+            onClick={() => void loadStatus()}
+          >
             Refresh
           </button>
         </div>
@@ -328,7 +353,11 @@ export default function WorkingTree({ repoPath, onCommitted }: WorkingTreeProps)
         {error && <div className="detail-error">{error}</div>}
         {notice && <div className="changes-notice">{notice}</div>}
 
-        <div className="changes-groups-scroll">
+        <div
+          ref={scrollRef}
+          className="changes-groups-scroll"
+          onScroll={(event) => onScrollTopChange?.(event.currentTarget.scrollTop)}
+        >
           <FileGroup
             title="Staged Changes"
             area="staged"
