@@ -40,7 +40,8 @@ function App() {
     }
 
     const normalized = repoPath.replace(/\\/g, "/");
-    return normalized.split("/").filter(Boolean).at(-1) ?? "Git 提交记录";
+    const parts = normalized.split("/").filter(Boolean);
+    return parts.length > 0 ? parts[parts.length - 1] : "Git 提交记录";
   }, [repoPath]);
 
   async function loadGitLog(path: string) {
