@@ -146,16 +146,6 @@ h1,
   padding-bottom: var(--density-row-y) !important;
 }
 
-html[data-density="comfortable"] .commit-content {
-  padding-top: 16px;
-  padding-bottom: 15px;
-}
-
-html[data-density="spacious"] .commit-content {
-  padding-top: 18px;
-  padding-bottom: 17px;
-}
-
 html[data-log-author-email="hide"] .commit-details > span:nth-of-type(2) {
   display: none !important;
 }
