@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Branches from "./Branches";
 import CommitDetail from "./CommitDetail";
+import GitInfo from "./GitInfo";
 import RepositorySidebar from "./RepositorySidebar";
 import WorkingTree from "./WorkingTree";
 import type {
@@ -739,6 +740,13 @@ function App() {
               >
                 Branches
               </button>
+              <button
+                type="button"
+                className={activeView === "info" ? "active" : ""}
+                onClick={() => changeView("info")}
+              >
+                Git Info
+              </button>
             </nav>
 
             {activeView === "log" && (
@@ -933,6 +941,8 @@ function App() {
                 onBranchChanged={handleBranchChanged}
               />
             )}
+
+            {activeView === "info" && <GitInfo repoPath={repoPath} />}
           </>
         )}
       </main>
