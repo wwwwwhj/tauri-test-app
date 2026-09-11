@@ -98,6 +98,14 @@ function applySettings(settings: ApplicationSettings) {
     "--wb-accent-soft",
     `color-mix(in srgb, ${accent.value} 16%, transparent)`,
   );
+  root.style.setProperty(
+    "--wb-selected",
+    `color-mix(in srgb, ${accent.value} 16%, var(--wb-panel))`,
+  );
+  root.style.setProperty(
+    "--wb-selected-strong",
+    `color-mix(in srgb, ${accent.value} 24%, var(--wb-panel))`,
+  );
   root.dataset.density = settings.density;
   root.dataset.logAuthorEmail = settings.logShowAuthorEmail ? "show" : "hide";
   root.dataset.diffWrap = settings.diffWrapLines ? "wrap" : "nowrap";
