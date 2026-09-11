@@ -12,6 +12,13 @@ interface GitConfigEntry {
   key: string;
   value: string;
   origin: string | null;
+  sourceScope: string;
+}
+
+interface GitConfigLayers {
+  global: GitConfigEntry[];
+  local: GitConfigEntry[];
+  effective: GitConfigEntry[];
 }
 
 interface GitWorkingState {
@@ -35,27 +42,59 @@ interface GitRepositoryInfo {
   behind: number;
   workingState: GitWorkingState;
   remotes: GitRemoteInfo[];
-  config: GitConfigEntry[];
+  config: GitConfigLayers;
 }
 
 interface GitInfoProps {
   repoPath: string;
 }
 
+type ConfigScope = "effective" | "local" | "global";
+
+const SCOPE_META: Record<
+  ConfigScope,
+  { label: string; description: string }
+> = {
+  effective: {
+    label: "Effective",
+    description: "最终生效值。Local、Global、System、includes 等作用域合并后，Git 实际读取到的配置。",
+  },
+  local: {
+    label: "Local",
+    description: "仅当前仓库的配置层，通常来自 .git/config。它可以覆盖 Global 配置。",
+  },
+  global: {
+    label: "Global",
+    description: "当前操作系统用户的 Git 配置层，通常来自 ~/.gitconfig 或用户级 include 文件。",
+  },
+};
+
 function Value({ children, mono = false }: { children: ReactNode; mono?: boolean }) {
   return <span className={mono ? "git-info-value mono" : "git-info-value"}>{children}</span>;
+}
+
+function scopeLabel(scope: string) {
+  if (scope === "local") return "Local";
+  if (scope === "global") return "Global";
+  if (scope === "system") return "System";
+  if (scope === "worktree") return "Worktree";
+  if (scope === "command") return "Command";
+  return scope || "Other";
 }
 
 export default function GitInfo({ repoPath }: GitInfoProps) {
   const [info, setInfo] = useState<GitRepositoryInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [configScope, setConfigScope] = useState<ConfigScope>("effective");
 
   const syncLabel = useMemo(() => {
     if (!info?.upstream) return "No upstream";
     if (info.ahead === 0 && info.behind === 0) return "Up to date";
     return `↑ ${info.ahead}  ↓ ${info.behind}`;
   }, [info]);
+
+  const visibleConfig = info?.config[configScope] ?? [];
 
   async function loadInfo() {
     setLoading(true);
@@ -75,17 +114,18 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
   }
 
   useEffect(() => {
+    setConfigScope("effective");
     void loadInfo();
   }, [repoPath]);
 
   if (loading && !info) {
-    return <section className="git-info-shell git-info-state">Reading Git information…</section>;
+    return <section className="git-info-shell git-info-state">Reading repository settings…</section>;
   }
 
   if (error && !info) {
     return (
       <section className="git-info-shell git-info-state git-info-error">
-        <strong>Unable to read Git information.</strong>
+        <strong>Unable to read repository settings.</strong>
         <span>{error}</span>
         <button type="button" className="secondary-button" onClick={() => void loadInfo()}>
           Retry
@@ -102,8 +142,9 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
     <section className="git-info-shell">
       <header className="git-info-toolbar">
         <div>
-          <strong>Git Information</strong>
+          <strong>Repository Settings</strong>
           <span>{info.gitVersion}</span>
+          <span className="settings-readonly-badge">READ ONLY</span>
         </div>
         <button
           type="button"
@@ -193,31 +234,58 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
 
         <section className="git-info-card git-config-card">
           <div className="git-info-card-title">
-            <span>Effective Git Config</span>
-            <small>{info.config.length} safe entries</small>
+            <span>Git Configuration</span>
+            <small>Safe keys only · read only</small>
+          </div>
+
+          <div className="config-scope-summary">
+            {(["effective", "local", "global"] as const).map((scope) => (
+              <button
+                type="button"
+                key={scope}
+                className={configScope === scope ? "active" : ""}
+                onClick={() => setConfigScope(scope)}
+              >
+                <strong>{SCOPE_META[scope].label}</strong>
+                <span>{info.config[scope].length} entries</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="config-scope-explainer">
+            <strong>{SCOPE_META[configScope].label}</strong>
+            <span>{SCOPE_META[configScope].description}</span>
           </div>
 
           <div className="git-config-note">
-            Sensitive keys such as HTTP authorization headers and raw credential values are not read.
+            当前页面只读取配置，不执行 git config 写入。HTTP authorization headers、raw credentials 等敏感配置不会被读取。
           </div>
 
-          {info.config.length === 0 ? (
-            <div className="git-info-empty">No matching configuration entries.</div>
+          {visibleConfig.length === 0 ? (
+            <div className="git-info-empty">
+              No matching {SCOPE_META[configScope].label.toLowerCase()} configuration entries.
+            </div>
           ) : (
             <div className="git-config-table-wrap">
-              <table className="git-config-table">
+              <table className="git-config-table repository-settings-table">
                 <thead>
                   <tr>
                     <th>Key</th>
-                    <th>Effective value</th>
+                    <th>Value</th>
+                    <th>Source scope</th>
                     <th>Origin</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {info.config.map((entry) => (
-                    <tr key={entry.key}>
+                  {visibleConfig.map((entry, index) => (
+                    <tr key={`${entry.key}-${entry.origin ?? ""}-${index}`}>
                       <td><code>{entry.key}</code></td>
                       <td><code>{entry.value}</code></td>
+                      <td>
+                        <span className={`config-scope-badge scope-${entry.sourceScope}`}>
+                          {scopeLabel(entry.sourceScope)}
+                        </span>
+                      </td>
                       <td><code>{entry.origin ?? "—"}</code></td>
                     </tr>
                   ))}
