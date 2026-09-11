@@ -1,0 +1,10 @@
+.view-tabs button:last-child {
+  font-size: 0;
+}
+
+.view-tabs button:last-child::before {
+  content: "Repository Settings";
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 550;
+}
