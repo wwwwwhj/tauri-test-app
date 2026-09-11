@@ -10,6 +10,7 @@ import type {
   GitRefInfo,
 } from "./gitTypes";
 import "./App.css";
+import "./LogFilters.css";
 
 interface GraphRow {
   commit: GitCommit;
