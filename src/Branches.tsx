@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { GitBranch, GitBranchesResult } from "./gitTypes";
+
+interface BranchesScrollPosition {
+  local: number;
+  remote: number;
+}
 
 interface BranchesProps {
   repoPath: string;
   onBranchChanged: () => void | Promise<void>;
+  initialScrollPosition?: BranchesScrollPosition;
+  onScrollPositionChange?: (position: BranchesScrollPosition) => void;
 }
 
 function shortHash(hash: string) {
@@ -49,7 +56,12 @@ function BranchRow({
           </button>
         )}
         {!branch.remote && !branch.current && onDelete && (
-          <button type="button" className="danger-link" disabled={busy} onClick={() => onDelete(branch)}>
+          <button
+            type="button"
+            className="danger-link"
+            disabled={busy}
+            onClick={() => onDelete(branch)}
+          >
             Delete
           </button>
         )}
@@ -59,7 +71,12 @@ function BranchRow({
   );
 }
 
-export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
+export default function Branches({
+  repoPath,
+  onBranchChanged,
+  initialScrollPosition = { local: 0, remote: 0 },
+  onScrollPositionChange,
+}: BranchesProps) {
   const [data, setData] = useState<GitBranchesResult>({
     currentBranch: "",
     local: [],
@@ -71,6 +88,8 @@ export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const localListRef = useRef<HTMLDivElement>(null);
+  const remoteListRef = useRef<HTMLDivElement>(null);
 
   const filteredLocal = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -107,6 +126,26 @@ export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
     setNotice("");
     void loadBranches();
   }, [repoPath]);
+
+  useEffect(() => {
+    if (loading) return;
+    const frame = requestAnimationFrame(() => {
+      if (localListRef.current) {
+        localListRef.current.scrollTop = initialScrollPosition.local;
+      }
+      if (remoteListRef.current) {
+        remoteListRef.current.scrollTop = initialScrollPosition.remote;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [repoPath, loading, initialScrollPosition.local, initialScrollPosition.remote]);
+
+  function reportScroll(local?: number, remote?: number) {
+    onScrollPositionChange?.({
+      local: local ?? localListRef.current?.scrollTop ?? 0,
+      remote: remote ?? remoteListRef.current?.scrollTop ?? 0,
+    });
+  }
 
   async function checkout(branch: GitBranch) {
     setBusy(true);
@@ -185,7 +224,12 @@ export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
           <strong>Branches</strong>
           <span>{data.currentBranch || "DETACHED HEAD"}</span>
         </div>
-        <button type="button" className="secondary-button compact-button" disabled={loading || busy} onClick={() => void loadBranches()}>
+        <button
+          type="button"
+          className="secondary-button compact-button"
+          disabled={loading || busy}
+          onClick={() => void loadBranches()}
+        >
           Refresh
         </button>
       </header>
@@ -209,7 +253,12 @@ export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
             }}
             placeholder="New branch name"
           />
-          <button type="button" className="primary-button" disabled={busy || !newBranch.trim()} onClick={() => void createBranch()}>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={busy || !newBranch.trim()}
+            onClick={() => void createBranch()}
+          >
             Create & Checkout
           </button>
         </div>
@@ -221,7 +270,11 @@ export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
             <strong>Local</strong>
             <span>{filteredLocal.length}</span>
           </div>
-          <div className="branch-list">
+          <div
+            ref={localListRef}
+            className="branch-list"
+            onScroll={(event) => reportScroll(event.currentTarget.scrollTop, undefined)}
+          >
             {filteredLocal.length === 0 && <div className="detail-empty">No local branches.</div>}
             {filteredLocal.map((branch) => (
               <BranchRow
@@ -240,7 +293,11 @@ export default function Branches({ repoPath, onBranchChanged }: BranchesProps) {
             <strong>Remote</strong>
             <span>{filteredRemote.length}</span>
           </div>
-          <div className="branch-list">
+          <div
+            ref={remoteListRef}
+            className="branch-list"
+            onScroll={(event) => reportScroll(undefined, event.currentTarget.scrollTop)}
+          >
             {filteredRemote.length === 0 && <div className="detail-empty">No remote branches.</div>}
             {filteredRemote.map((branch) => (
               <BranchRow
