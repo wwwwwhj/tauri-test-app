@@ -73,6 +73,7 @@ export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
         repoPath,
         commitHash,
         filePath: file.path,
+        oldPath: file.oldPath,
       });
 
       if (
