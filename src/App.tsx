@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import CommitDetail from "./CommitDetail";
+import WorkingTree from "./WorkingTree";
 import type { GitCommit, GitLogResult, GitRefInfo } from "./gitTypes";
 import "./App.css";
 
@@ -15,6 +16,8 @@ interface GraphResult {
   rows: GraphRow[];
   laneCount: number;
 }
+
+type AppView = "log" | "changes";
 
 const LANE_WIDTH = 20;
 const GRAPH_SIDE_PADDING = 12;
@@ -200,17 +203,18 @@ function App() {
   const [branch, setBranch] = useState("");
   const [commits, setCommits] = useState<GitCommit[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<GitCommit | null>(null);
+  const [activeView, setActiveView] = useState<AppView>("log");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const title = useMemo(() => {
     if (!repoPath) {
-      return "Git 提交记录";
+      return "Git Client";
     }
 
     const normalized = repoPath.replace(/\\/g, "/");
     const parts = normalized.split("/").filter(Boolean);
-    return parts.length > 0 ? parts[parts.length - 1] : "Git 提交记录";
+    return parts.length > 0 ? parts[parts.length - 1] : "Git Client";
   }, [repoPath]);
 
   const graph = useMemo(() => buildGraph(commits), [commits]);
@@ -252,6 +256,7 @@ function App() {
         return;
       }
 
+      setActiveView("log");
       await loadGitLog(selected);
     } catch (err) {
       setError(String(err));
@@ -259,10 +264,7 @@ function App() {
   }
 
   async function refresh() {
-    if (!repoPath) {
-      return;
-    }
-
+    if (!repoPath) return;
     await loadGitLog(repoPath, true);
   }
 
@@ -270,7 +272,7 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">TAURI GIT VIEWER</div>
+          <div className="eyebrow">TAURI GIT CLIENT</div>
           <h1>{title}</h1>
           <div className="repo-meta">
             <span className="repo-path">
@@ -281,12 +283,12 @@ function App() {
         </div>
 
         <div className="actions">
-          {repoPath && (
-            <button className="secondary-button" onClick={refresh} disabled={loading}>
+          {repoPath && activeView === "log" && (
+            <button className="secondary-button" onClick={() => void refresh()} disabled={loading}>
               刷新
             </button>
           )}
-          <button className="primary-button" onClick={selectRepository} disabled={loading}>
+          <button className="primary-button" onClick={() => void selectRepository()} disabled={loading}>
             {repoPath ? "更换仓库" : "选择 Git 仓库"}
           </button>
         </div>
@@ -298,82 +300,105 @@ function App() {
         <section className="empty-state">
           <div className="empty-icon">⌘</div>
           <h2>选择一个本地 Git 仓库</h2>
-          <p>程序会读取所有分支的拓扑历史，并绘制 branch / merge Git Graph。</p>
-          <button className="primary-button" onClick={selectRepository}>
+          <p>查看 Git Graph、提交 Diff，并管理本地 Working Tree。</p>
+          <button className="primary-button" onClick={() => void selectRepository()}>
             选择目录
           </button>
         </section>
       )}
 
       {repoPath && (
-        <section className="workspace">
-          <section className="history-panel">
-            <div className="history-header">
-              <div>
-                <strong>提交记录</strong>
-                <span>{commits.length} 条</span>
-                <span>{graph.laneCount} 条活动图轨</span>
-              </div>
-              {loading && <span className="loading-text">正在读取 Git...</span>}
-            </div>
+        <>
+          <nav className="view-tabs" aria-label="Git views">
+            <button
+              type="button"
+              className={activeView === "log" ? "active" : ""}
+              onClick={() => setActiveView("log")}
+            >
+              Log
+            </button>
+            <button
+              type="button"
+              className={activeView === "changes" ? "active" : ""}
+              onClick={() => setActiveView("changes")}
+            >
+              Local Changes
+            </button>
+          </nav>
 
-            {!loading && commits.length === 0 ? (
-              <div className="empty-history">当前仓库没有可显示的提交记录。</div>
-            ) : (
-              <div className="commit-list">
-                {graph.rows.map((row) => {
-                  const commit = row.commit;
-                  const selected = selectedCommit?.hash === commit.hash;
+          {activeView === "log" ? (
+            <section className="workspace">
+              <section className="history-panel">
+                <div className="history-header">
+                  <div>
+                    <strong>提交记录</strong>
+                    <span>{commits.length} 条</span>
+                    <span>{graph.laneCount} 条活动图轨</span>
+                  </div>
+                  {loading && <span className="loading-text">正在读取 Git...</span>}
+                </div>
 
-                  return (
-                    <button
-                      type="button"
-                      className={`commit-row${selected ? " selected" : ""}`}
-                      key={commit.hash}
-                      onClick={() => setSelectedCommit(commit)}
-                    >
-                      <span className="graph-column">
-                        <CommitGraph row={row} laneCount={graph.laneCount} />
-                      </span>
+                {!loading && commits.length === 0 ? (
+                  <div className="empty-history">当前仓库没有可显示的提交记录。</div>
+                ) : (
+                  <div className="commit-list">
+                    {graph.rows.map((row) => {
+                      const commit = row.commit;
+                      const selected = selectedCommit?.hash === commit.hash;
 
-                      <span className="commit-content">
-                        <span className="commit-title-row">
-                          <span className="commit-message">
-                            {commit.message || "(无提交说明)"}
+                      return (
+                        <button
+                          type="button"
+                          className={`commit-row${selected ? " selected" : ""}`}
+                          key={commit.hash}
+                          onClick={() => setSelectedCommit(commit)}
+                        >
+                          <span className="graph-column">
+                            <CommitGraph row={row} laneCount={graph.laneCount} />
                           </span>
-                          {commit.refs.length > 0 && (
-                            <span className="commit-refs">
-                              {commit.refs.map((gitRef, index) => (
-                                <RefBadge
-                                  key={`${gitRef.kind}-${gitRef.name}-${index}`}
-                                  gitRef={gitRef}
-                                />
-                              ))}
-                            </span>
-                          )}
-                        </span>
 
-                        <span className="commit-details">
-                          <code title={commit.hash}>{commit.shortHash}</code>
-                          <span>{commit.authorName}</span>
-                          <span title={commit.authorEmail}>{commit.authorEmail}</span>
-                          <span>{formatDate(commit.date)}</span>
-                          {commit.parents.length > 1 && (
-                            <span className="merge-badge">
-                              merge · {commit.parents.length} parents
+                          <span className="commit-content">
+                            <span className="commit-title-row">
+                              <span className="commit-message">
+                                {commit.message || "(无提交说明)"}
+                              </span>
+                              {commit.refs.length > 0 && (
+                                <span className="commit-refs">
+                                  {commit.refs.map((gitRef, index) => (
+                                    <RefBadge
+                                      key={`${gitRef.kind}-${gitRef.name}-${index}`}
+                                      gitRef={gitRef}
+                                    />
+                                  ))}
+                                </span>
+                              )}
                             </span>
-                          )}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
 
-          <CommitDetail repoPath={repoPath} commit={selectedCommit} />
-        </section>
+                            <span className="commit-details">
+                              <code title={commit.hash}>{commit.shortHash}</code>
+                              <span>{commit.authorName}</span>
+                              <span title={commit.authorEmail}>{commit.authorEmail}</span>
+                              <span>{formatDate(commit.date)}</span>
+                              {commit.parents.length > 1 && (
+                                <span className="merge-badge">
+                                  merge · {commit.parents.length} parents
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <CommitDetail repoPath={repoPath} commit={selectedCommit} />
+            </section>
+          ) : (
+            <WorkingTree repoPath={repoPath} onCommitted={() => loadGitLog(repoPath, false)} />
+          )}
+        </>
       )}
     </main>
   );
