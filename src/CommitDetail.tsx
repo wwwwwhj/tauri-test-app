@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useI18n } from "./i18n";
 import type { GitChangedFile, GitCommit, GitFileDiff } from "./gitTypes";
 
 interface CommitDetailProps {
@@ -16,11 +17,6 @@ const STATUS_LABELS: Record<string, string> = {
   T: "T",
   U: "U",
 };
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
 
 function diffLineClass(line: string) {
   if (line.startsWith("@@")) return "diff-hunk";
@@ -43,6 +39,7 @@ function diffLineClass(line: string) {
 }
 
 export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
+  const { t, formatDate } = useI18n();
   const [files, setFiles] = useState<GitChangedFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<GitChangedFile | null>(null);
   const [fileDiff, setFileDiff] = useState<GitFileDiff | null>(null);
@@ -142,8 +139,8 @@ export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
     return (
       <aside className="detail-panel detail-placeholder">
         <div className="detail-placeholder-icon">↳</div>
-        <strong>选择一个提交</strong>
-        <span>点击左侧 commit，查看修改文件和单文件 Diff。</span>
+        <strong>{t("commit.selectTitle")}</strong>
+        <span>{t("commit.selectDescription")}</span>
       </aside>
     );
   }
@@ -151,7 +148,7 @@ export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
   return (
     <aside className="detail-panel">
       <header className="detail-header">
-        <div className="detail-message">{commit.message || "(无提交说明)"}</div>
+        <div className="detail-message">{commit.message || t("common.noCommitMessage")}</div>
         <div className="detail-meta">
           <code title={commit.hash}>{commit.shortHash}</code>
           <span>{commit.authorName}</span>
@@ -164,13 +161,13 @@ export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
       <div className="detail-body">
         <section className="changed-files-panel">
           <div className="detail-section-title">
-            <strong>Changed Files</strong>
-            <span>{loadingFiles ? "读取中…" : files.length}</span>
+            <strong>{t("commit.changedFiles")}</strong>
+            <span>{loadingFiles ? t("common.reading") : files.length}</span>
           </div>
 
           <div className="changed-files-list">
             {!loadingFiles && files.length === 0 && (
-              <div className="detail-empty">这个提交没有可显示的文件差异。</div>
+              <div className="detail-empty">{t("commit.noFiles")}</div>
             )}
 
             {files.map((file) => (
@@ -197,22 +194,18 @@ export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
         <section className="diff-panel">
           <div className="detail-section-title diff-title">
             <strong>{selectedFile?.path ?? "Diff"}</strong>
-            {loadingDiff && <span>读取中…</span>}
+            {loadingDiff && <span>{t("common.reading")}</span>}
           </div>
 
           {!selectedFile ? (
-            <div className="detail-empty">选择文件后显示 Diff。</div>
+            <div className="detail-empty">{t("commit.selectFile")}</div>
           ) : loadingDiff ? (
-            <div className="detail-empty">正在读取文件差异…</div>
+            <div className="detail-empty">{t("commit.loadingDiff")}</div>
           ) : fileDiff ? (
             <>
-              {fileDiff.truncated && (
-                <div className="diff-warning">
-                  Diff 过大，只显示前 400,000 个字符。
-                </div>
-              )}
+              {fileDiff.truncated && <div className="diff-warning">{t("commit.largeDiff")}</div>}
               {diffLines.length === 0 || fileDiff.content.length === 0 ? (
-                <div className="detail-empty">没有文本 Diff，文件可能是二进制文件。</div>
+                <div className="detail-empty">{t("commit.noTextDiff")}</div>
               ) : (
                 <pre className="diff-viewer">
                   {diffLines.map((line, index) => (
@@ -225,7 +218,7 @@ export default function CommitDetail({ repoPath, commit }: CommitDetailProps) {
               )}
             </>
           ) : (
-            <div className="detail-empty">暂无 Diff。</div>
+            <div className="detail-empty">{t("commit.noDiff")}</div>
           )}
         </section>
       </div>
