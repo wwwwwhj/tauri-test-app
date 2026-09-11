@@ -50,6 +50,14 @@
                 "--wb-accent-soft",
                 `color-mix(in srgb, ${accent[0]} 16%, transparent)`,
               );
+              document.documentElement.style.setProperty(
+                "--wb-selected",
+                `color-mix(in srgb, ${accent[0]} 16%, var(--wb-panel))`,
+              );
+              document.documentElement.style.setProperty(
+                "--wb-selected-strong",
+                `color-mix(in srgb, ${accent[0]} 24%, var(--wb-panel))`,
+              );
             }
             document.documentElement.dataset.logAuthorEmail = settings.logShowAuthorEmail === false ? "hide" : "show";
             document.documentElement.dataset.diffWrap = settings.diffWrapLines === true ? "wrap" : "nowrap";
