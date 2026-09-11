@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useI18n } from "./i18n";
 import type { GitBranch, GitBranchesResult } from "./gitTypes";
 
 interface BranchesScrollPosition {
@@ -18,11 +19,6 @@ function shortHash(hash: string) {
   return hash.slice(0, 8);
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
 function BranchRow({
   branch,
   busy,
@@ -34,6 +30,8 @@ function BranchRow({
   onCheckout: (branch: GitBranch) => void;
   onDelete?: (branch: GitBranch) => void;
 }) {
+  const { t, formatDate } = useI18n();
+
   return (
     <div className={`branch-row${branch.current ? " current" : ""}`}>
       <div className="branch-main">
@@ -42,7 +40,7 @@ function BranchRow({
           <strong>{branch.name}</strong>
           {branch.upstream && <span className="branch-upstream">→ {branch.upstream}</span>}
         </div>
-        <div className="branch-subject">{branch.subject || "(no commit message)"}</div>
+        <div className="branch-subject">{branch.subject || t("branches.noMessage")}</div>
         <div className="branch-meta">
           <code>{shortHash(branch.hash)}</code>
           <span>{formatDate(branch.date)}</span>
@@ -52,7 +50,7 @@ function BranchRow({
       <div className="branch-actions">
         {!branch.current && (
           <button type="button" disabled={busy} onClick={() => onCheckout(branch)}>
-            Checkout
+            {t("branches.checkout")}
           </button>
         )}
         {!branch.remote && !branch.current && onDelete && (
@@ -62,10 +60,10 @@ function BranchRow({
             disabled={busy}
             onClick={() => onDelete(branch)}
           >
-            Delete
+            {t("branches.delete")}
           </button>
         )}
-        {branch.current && <span className="current-label">CURRENT</span>}
+        {branch.current && <span className="current-label">{t("branches.current")}</span>}
       </div>
     </div>
   );
@@ -77,6 +75,7 @@ export default function Branches({
   initialScrollPosition = { local: 0, remote: 0 },
   onScrollPositionChange,
 }: BranchesProps) {
+  const { t } = useI18n();
   const [data, setData] = useState<GitBranchesResult>({
     currentBranch: "",
     local: [],
@@ -130,12 +129,8 @@ export default function Branches({
   useEffect(() => {
     if (loading) return;
     const frame = requestAnimationFrame(() => {
-      if (localListRef.current) {
-        localListRef.current.scrollTop = initialScrollPosition.local;
-      }
-      if (remoteListRef.current) {
-        remoteListRef.current.scrollTop = initialScrollPosition.remote;
-      }
+      if (localListRef.current) localListRef.current.scrollTop = initialScrollPosition.local;
+      if (remoteListRef.current) remoteListRef.current.scrollTop = initialScrollPosition.remote;
     });
     return () => cancelAnimationFrame(frame);
   }, [repoPath, loading, initialScrollPosition.local, initialScrollPosition.remote]);
@@ -161,7 +156,7 @@ export default function Branches({
             repoPath,
             branchName: branch.name,
           });
-      setNotice(result.trim() || `Checked out ${branch.name}`);
+      setNotice(result.trim() || t("branches.checkedOut", { name: branch.name }));
       await loadBranches();
       await onBranchChanged();
     } catch (err) {
@@ -185,7 +180,7 @@ export default function Branches({
         checkout: true,
       });
       setNewBranch("");
-      setNotice(result.trim() || `Created ${branchName}`);
+      setNotice(result.trim() || t("branches.created", { name: branchName }));
       await loadBranches();
       await onBranchChanged();
     } catch (err) {
@@ -196,7 +191,7 @@ export default function Branches({
   }
 
   async function deleteBranch(branch: GitBranch) {
-    if (!window.confirm(`Delete local branch?\n\n${branch.name}`)) return;
+    if (!window.confirm(t("branches.deleteConfirm", { name: branch.name }))) return;
 
     setBusy(true);
     setError("");
@@ -207,11 +202,11 @@ export default function Branches({
         branchName: branch.name,
         force: false,
       });
-      setNotice(result.trim() || `Deleted ${branch.name}`);
+      setNotice(result.trim() || t("branches.deleted", { name: branch.name }));
       await loadBranches();
       await onBranchChanged();
     } catch (err) {
-      setError(`${String(err)}\n\n未合并分支不会被强制删除。`);
+      setError(`${String(err)}\n\n${t("branches.unmergedHint")}`);
     } finally {
       setBusy(false);
     }
@@ -221,7 +216,7 @@ export default function Branches({
     <section className="branches-shell">
       <header className="branches-toolbar">
         <div>
-          <strong>Branches</strong>
+          <strong>{t("branches.title")}</strong>
           <span>{data.currentBranch || "DETACHED HEAD"}</span>
         </div>
         <button
@@ -230,7 +225,7 @@ export default function Branches({
           disabled={loading || busy}
           onClick={() => void loadBranches()}
         >
-          Refresh
+          {t("common.refresh")}
         </button>
       </header>
 
@@ -242,7 +237,7 @@ export default function Branches({
           type="search"
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
-          placeholder="Filter branches"
+          placeholder={t("branches.filter")}
         />
         <div className="new-branch-form">
           <input
@@ -251,7 +246,7 @@ export default function Branches({
             onKeyDown={(event) => {
               if (event.key === "Enter") void createBranch();
             }}
-            placeholder="New branch name"
+            placeholder={t("branches.newName")}
           />
           <button
             type="button"
@@ -259,7 +254,7 @@ export default function Branches({
             disabled={busy || !newBranch.trim()}
             onClick={() => void createBranch()}
           >
-            Create & Checkout
+            {t("branches.createCheckout")}
           </button>
         </div>
       </div>
@@ -267,7 +262,7 @@ export default function Branches({
       <div className="branches-columns">
         <section className="branch-section">
           <div className="branch-section-title">
-            <strong>Local</strong>
+            <strong>{t("common.local")}</strong>
             <span>{filteredLocal.length}</span>
           </div>
           <div
@@ -275,7 +270,7 @@ export default function Branches({
             className="branch-list"
             onScroll={(event) => reportScroll(event.currentTarget.scrollTop, undefined)}
           >
-            {filteredLocal.length === 0 && <div className="detail-empty">No local branches.</div>}
+            {filteredLocal.length === 0 && <div className="detail-empty">{t("branches.noLocal")}</div>}
             {filteredLocal.map((branch) => (
               <BranchRow
                 key={branch.fullName}
@@ -290,7 +285,7 @@ export default function Branches({
 
         <section className="branch-section">
           <div className="branch-section-title">
-            <strong>Remote</strong>
+            <strong>{t("common.remote")}</strong>
             <span>{filteredRemote.length}</span>
           </div>
           <div
@@ -298,7 +293,7 @@ export default function Branches({
             className="branch-list"
             onScroll={(event) => reportScroll(undefined, event.currentTarget.scrollTop)}
           >
-            {filteredRemote.length === 0 && <div className="detail-empty">No remote branches.</div>}
+            {filteredRemote.length === 0 && <div className="detail-empty">{t("branches.noRemote")}</div>}
             {filteredRemote.map((branch) => (
               <BranchRow
                 key={branch.fullName}
