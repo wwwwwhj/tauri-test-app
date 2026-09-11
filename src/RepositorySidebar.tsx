@@ -1,3 +1,5 @@
+import { useI18n } from "./i18n";
+
 interface RepositorySidebarProps {
   repositories: string[];
   activePath: string;
@@ -32,11 +34,13 @@ export default function RepositorySidebar({
   onSelect,
   onRemove,
 }: RepositorySidebarProps) {
+  const { t } = useI18n();
+
   return (
     <aside className="repository-sidebar">
       <div className="repository-sidebar-header">
         <div>
-          <strong>Repositories</strong>
+          <strong>{t("repositories.title")}</strong>
           <span>{repositories.length}</span>
         </div>
         <button
@@ -44,8 +48,8 @@ export default function RepositorySidebar({
           className="repository-add-button"
           onClick={onAdd}
           disabled={loading}
-          title="Add local Git repository"
-          aria-label="Add local Git repository"
+          title={t("repositories.addLocal")}
+          aria-label={t("repositories.addLocal")}
         >
           +
         </button>
@@ -54,14 +58,15 @@ export default function RepositorySidebar({
       <div className="repository-list">
         {repositories.length === 0 ? (
           <div className="repository-list-empty">
-            <span>No repositories</span>
+            <span>{t("repositories.none")}</span>
             <button type="button" onClick={onAdd} disabled={loading}>
-              Add Repository
+              {t("repositories.add")}
             </button>
           </div>
         ) : (
           repositories.map((path) => {
             const active = path === activePath;
+            const name = repositoryName(path);
             return (
               <div className={`repository-row${active ? " active" : ""}`} key={path}>
                 <button
@@ -75,7 +80,7 @@ export default function RepositorySidebar({
                     <RepositoryIcon />
                   </span>
                   <span className="repository-text">
-                    <strong>{repositoryName(path)}</strong>
+                    <strong>{name}</strong>
                     <small>{path}</small>
                   </span>
                 </button>
@@ -85,8 +90,8 @@ export default function RepositorySidebar({
                   className="repository-remove"
                   onClick={() => onRemove(path)}
                   disabled={loading}
-                  title="Remove from list"
-                  aria-label={`Remove ${repositoryName(path)} from list`}
+                  title={t("repositories.remove", { name })}
+                  aria-label={t("repositories.remove", { name })}
                 >
                   ×
                 </button>
