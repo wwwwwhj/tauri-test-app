@@ -1,0 +1,317 @@
+html[data-theme="light"] {
+  --wb-bg: #f4f5f7;
+  --wb-panel: #ffffff;
+  --wb-tool: #f7f8fa;
+  --wb-sidebar: #f1f2f4;
+  --wb-hover: #eceff3;
+  --wb-selected: #dceaff;
+  --wb-selected-strong: #cfe2ff;
+  --wb-border: #d9dce1;
+  --wb-border-soft: #e9ebee;
+  --wb-text: #25282d;
+  --wb-muted: #6f737a;
+  --wb-subtle: #8b9098;
+  --wb-accent: #3574f0;
+  --wb-accent-hover: #2f65d2;
+  --wb-accent-soft: #e8f0fe;
+  --wb-danger: #c93c37;
+  --wb-success: #2f7d4a;
+  --wb-warning: #8a6417;
+  --graph-node-border: var(--wb-panel);
+}
+
+html[data-theme="dark"] {
+  --wb-bg: #1e1f22;
+  --wb-panel: #2b2d30;
+  --wb-tool: #26272b;
+  --wb-sidebar: #242528;
+  --wb-hover: #33353a;
+  --wb-selected: #2f4a67;
+  --wb-selected-strong: #365674;
+  --wb-border: #3a3c42;
+  --wb-border-soft: #34363b;
+  --wb-text: #dfe1e5;
+  --wb-muted: #9da0a8;
+  --wb-subtle: #777b84;
+  --wb-accent: #4b88e7;
+  --wb-accent-hover: #5a95ef;
+  --wb-accent-soft: #293b55;
+  --wb-danger: #e06c68;
+  --wb-success: #65a975;
+  --wb-warning: #d6ad56;
+  --graph-node-border: var(--wb-panel);
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] #root,
+html[data-theme="light"] .app-frame,
+html[data-theme="light"] .app-shell {
+  background: var(--wb-bg);
+  color: var(--wb-text);
+}
+
+html[data-theme="light"] .topbar,
+html[data-theme="light"] .view-tabs,
+html[data-theme="light"] .repository-sidebar-header,
+html[data-theme="light"] .history-header,
+html[data-theme="light"] .changes-toolbar,
+html[data-theme="light"] .branches-toolbar,
+html[data-theme="light"] .git-info-toolbar,
+html[data-theme="light"] .detail-header,
+html[data-theme="light"] .detail-section-title,
+html[data-theme="light"] .working-diff-panel > .detail-section-title,
+html[data-theme="light"] .changes-group-title,
+html[data-theme="light"] .branch-section-title,
+html[data-theme="light"] .git-info-card-title,
+html[data-theme="light"] .git-state-strip,
+html[data-theme="light"] .config-scope-explainer,
+html[data-theme="light"] .git-config-table th,
+html[data-theme="light"] .commit-box {
+  background: var(--wb-tool);
+  border-color: var(--wb-border);
+}
+
+html[data-theme="light"] .repository-sidebar {
+  background: var(--wb-sidebar);
+  border-color: var(--wb-border);
+}
+
+html[data-theme="light"] .history-panel,
+html[data-theme="light"] .detail-panel,
+html[data-theme="light"] .changes-panel,
+html[data-theme="light"] .working-diff-panel,
+html[data-theme="light"] .branches-shell,
+html[data-theme="light"] .git-info-card,
+html[data-theme="light"] .log-filter-bar,
+html[data-theme="light"] .branches-controls,
+html[data-theme="light"] .diff-viewer,
+html[data-theme="light"] .config-scope-summary button,
+html[data-theme="light"] .commit-box textarea,
+html[data-theme="light"] .log-filter-bar input,
+html[data-theme="light"] .log-filter-bar select,
+html[data-theme="light"] .branches-controls input,
+html[data-theme="light"] .secondary-button,
+html[data-theme="light"] .repository-list-empty button,
+html[data-theme="light"] .ui-preference-button {
+  background: var(--wb-panel);
+  border-color: var(--wb-border);
+  color: var(--wb-text);
+}
+
+html[data-theme="light"] .repository-row:hover,
+html[data-theme="light"] .secondary-button:hover:not(:disabled),
+html[data-theme="light"] .repository-list-empty button:hover:not(:disabled),
+html[data-theme="light"] .repository-add-button:hover:not(:disabled),
+html[data-theme="light"] .view-tabs button:hover,
+html[data-theme="light"] .commit-row:hover,
+html[data-theme="light"] .changed-file:hover,
+html[data-theme="light"] .changed-file.selected,
+html[data-theme="light"] .changes-file-row:hover,
+html[data-theme="light"] .changes-file-row.selected,
+html[data-theme="light"] .branch-row:hover,
+html[data-theme="light"] .branch-row.current,
+html[data-theme="light"] .config-scope-summary button:hover,
+html[data-theme="light"] .config-scope-summary button.active,
+html[data-theme="light"] .ui-preference-button:hover {
+  background: var(--wb-hover);
+}
+
+html[data-theme="light"] .repository-row.active,
+html[data-theme="light"] .commit-row.selected {
+  background: var(--wb-selected);
+}
+
+html[data-theme="light"] .commit-details code,
+html[data-theme="light"] .detail-meta code,
+html[data-theme="light"] .branch-meta code,
+html[data-theme="light"] .git-state-strip span,
+html[data-theme="light"] .settings-readonly-badge {
+  background: #eef0f2;
+  color: var(--wb-muted) !important;
+}
+
+html[data-theme="light"] .diff-add { background: #eaf7ee; }
+html[data-theme="light"] .diff-delete { background: #fcebea; }
+html[data-theme="light"] .diff-hunk { background: #eaf2ff; color: #285f9f; }
+html[data-theme="light"] .status-a,
+html[data-theme="light"] .status-c,
+html[data-theme="light"] .git-state-strip .clean,
+html[data-theme="light"] .current-label { background: #e8f5ec; color: #2d6f43; }
+html[data-theme="light"] .status-m,
+html[data-theme="light"] .status-r,
+html[data-theme="light"] .status-t,
+html[data-theme="light"] .git-state-strip .dirty { background: #fff4d6; color: #775b10; }
+html[data-theme="light"] .status-d,
+html[data-theme="light"] .git-state-strip .conflict { background: #fbe9e8; color: #a23b36; }
+html[data-theme="light"] .status-u { background: #f1eaf9; color: #7048a1; }
+html[data-theme="light"] .git-config-note { background: #fff9e7; color: #72591a; border-color: #ead697; }
+html[data-theme="light"] .changes-notice { background: #edf8f0; color: #2d6d41; border-color: #9fcea9; }
+html[data-theme="light"] .error-panel,
+html[data-theme="light"] .detail-error { background: #fff1f0; color: #a23430; border-color: #efaaa6; }
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root,
+html[data-theme="dark"] .app-frame,
+html[data-theme="dark"] .app-shell {
+  background: var(--wb-bg);
+  color: var(--wb-text);
+}
+
+html[data-theme="dark"] * {
+  scrollbar-color: #555860 transparent;
+}
+
+html[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: #555860;
+  background-clip: padding-box;
+}
+
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .view-tabs,
+html[data-theme="dark"] .repository-sidebar-header,
+html[data-theme="dark"] .history-header,
+html[data-theme="dark"] .changes-toolbar,
+html[data-theme="dark"] .branches-toolbar,
+html[data-theme="dark"] .git-info-toolbar,
+html[data-theme="dark"] .detail-header,
+html[data-theme="dark"] .detail-section-title,
+html[data-theme="dark"] .working-diff-panel > .detail-section-title,
+html[data-theme="dark"] .changes-group-title,
+html[data-theme="dark"] .branch-section-title,
+html[data-theme="dark"] .git-info-card-title,
+html[data-theme="dark"] .git-state-strip,
+html[data-theme="dark"] .config-scope-explainer,
+html[data-theme="dark"] .git-config-table th,
+html[data-theme="dark"] .commit-box {
+  background: var(--wb-tool);
+  border-color: var(--wb-border);
+}
+
+html[data-theme="dark"] .repository-sidebar {
+  background: var(--wb-sidebar);
+  border-color: var(--wb-border);
+}
+
+html[data-theme="dark"] .history-panel,
+html[data-theme="dark"] .detail-panel,
+html[data-theme="dark"] .changes-panel,
+html[data-theme="dark"] .working-diff-panel,
+html[data-theme="dark"] .branches-shell,
+html[data-theme="dark"] .git-info-card,
+html[data-theme="dark"] .log-filter-bar,
+html[data-theme="dark"] .branches-controls,
+html[data-theme="dark"] .diff-viewer,
+html[data-theme="dark"] .config-scope-summary button,
+html[data-theme="dark"] .commit-box textarea,
+html[data-theme="dark"] .log-filter-bar input,
+html[data-theme="dark"] .log-filter-bar select,
+html[data-theme="dark"] .branches-controls input {
+  background: var(--wb-panel);
+  border-color: var(--wb-border);
+  color: var(--wb-text);
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] .commit-message,
+html[data-theme="dark"] .detail-message,
+html[data-theme="dark"] .detail-placeholder strong,
+html[data-theme="dark"] .detail-section-title,
+html[data-theme="dark"] .changed-file,
+html[data-theme="dark"] .changes-file-main,
+html[data-theme="dark"] .branch-name-line strong,
+html[data-theme="dark"] .git-info-card-title,
+html[data-theme="dark"] .git-info-value,
+html[data-theme="dark"] .git-remote-item strong,
+html[data-theme="dark"] .git-config-table td code,
+html[data-theme="dark"] .config-scope-summary button,
+html[data-theme="dark"] .config-scope-explainer strong,
+html[data-theme="dark"] .repository-text strong {
+  color: var(--wb-text);
+}
+
+html[data-theme="dark"] .primary-button {
+  border-color: var(--wb-accent);
+  background: var(--wb-accent);
+  color: #fff;
+}
+
+html[data-theme="dark"] .secondary-button,
+html[data-theme="dark"] .repository-list-empty button,
+html[data-theme="dark"] .ui-preference-button {
+  border-color: var(--wb-border);
+  background: #303238;
+  color: var(--wb-text);
+}
+
+html[data-theme="dark"] .secondary-button:hover:not(:disabled),
+html[data-theme="dark"] .repository-list-empty button:hover:not(:disabled),
+html[data-theme="dark"] .repository-add-button:hover:not(:disabled),
+html[data-theme="dark"] .view-tabs button:hover,
+html[data-theme="dark"] .commit-row:hover,
+html[data-theme="dark"] .changed-file:hover,
+html[data-theme="dark"] .changed-file.selected,
+html[data-theme="dark"] .changes-file-row:hover,
+html[data-theme="dark"] .changes-file-row.selected,
+html[data-theme="dark"] .branch-row:hover,
+html[data-theme="dark"] .branch-row.current,
+html[data-theme="dark"] .config-scope-summary button:hover,
+html[data-theme="dark"] .config-scope-summary button.active,
+html[data-theme="dark"] .ui-preference-button:hover {
+  background: var(--wb-hover);
+}
+
+html[data-theme="dark"] .repository-row.active,
+html[data-theme="dark"] .commit-row.selected { background: var(--wb-selected); }
+
+html[data-theme="dark"] .repo-path,
+html[data-theme="dark"] .repo-meta,
+html[data-theme="dark"] .commit-details,
+html[data-theme="dark"] .detail-meta,
+html[data-theme="dark"] .file-path small,
+html[data-theme="dark"] .branch-subject,
+html[data-theme="dark"] .branch-meta,
+html[data-theme="dark"] .git-info-row > span:first-child,
+html[data-theme="dark"] .git-remote-item span,
+html[data-theme="dark"] .git-remote-item code,
+html[data-theme="dark"] .config-scope-summary span,
+html[data-theme="dark"] .config-scope-explainer span,
+html[data-theme="dark"] .settings-cache-meta { color: var(--wb-muted); }
+
+html[data-theme="dark"] .commit-details code,
+html[data-theme="dark"] .detail-meta code,
+html[data-theme="dark"] .branch-meta code,
+html[data-theme="dark"] .git-state-strip span,
+html[data-theme="dark"] .settings-readonly-badge { background: #34363b; color: var(--wb-muted) !important; }
+
+html[data-theme="dark"] .branch-badge,
+html[data-theme="dark"] .filter-active-badge,
+html[data-theme="dark"] .ref-branch { border-color: #4f6f9e; background: #293b55; color: #8bb8f5 !important; }
+html[data-theme="dark"] .ref-remote { border-color: #51545b; background: #34363b; color: #a7aab1; }
+html[data-theme="dark"] .ref-tag { border-color: #75642f; background: #443b22; color: #e0c36b; }
+html[data-theme="dark"] .ref-head { border-color: #6b5793; background: #3b304d; color: #c5a6f4; }
+html[data-theme="dark"] .diff-add { background: #243b2a; }
+html[data-theme="dark"] .diff-delete { background: #482b2a; }
+html[data-theme="dark"] .diff-hunk { background: #283b52; color: #8bb8f5; }
+html[data-theme="dark"] .status-a,
+html[data-theme="dark"] .status-c,
+html[data-theme="dark"] .git-state-strip .clean,
+html[data-theme="dark"] .current-label { background: #294033; color: #83c895; }
+html[data-theme="dark"] .status-m,
+html[data-theme="dark"] .status-r,
+html[data-theme="dark"] .status-t,
+html[data-theme="dark"] .git-state-strip .dirty,
+html[data-theme="dark"] .git-config-note { background: #493d24; color: #e0c36b; }
+html[data-theme="dark"] .status-d,
+html[data-theme="dark"] .git-state-strip .conflict { background: #4a2c2b; color: #ef8b86; }
+html[data-theme="dark"] .status-u { background: #3b304d; color: #c5a6f4; }
+html[data-theme="dark"] .changes-notice { border-color: #41684b; background: #26382b; color: #83c895; }
+html[data-theme="dark"] .error-panel,
+html[data-theme="dark"] .detail-error { border-color: #73413e; background: #402827; color: #ef8b86; }
+html[data-theme="dark"] .diff-warning,
+html[data-theme="dark"] .git-config-note { border-color: #695a2f; }
+html[data-theme="dark"] .repository-remove:hover:not(:disabled),
+html[data-theme="dark"] .changes-file-actions .danger-link:hover:not(:disabled),
+html[data-theme="dark"] .branch-actions .danger-link:hover:not(:disabled) { background: #4a2c2b; color: #ef8b86; }
+html[data-theme="dark"] .config-scope-badge { border-color: #51545b; background: #34363b; color: #a7aab1; }
+html[data-theme="dark"] .config-scope-badge.scope-local { border-color: #4f6f9e; background: #293b55; color: #8bb8f5; }
+html[data-theme="dark"] .config-scope-badge.scope-global { border-color: #6b5793; background: #3b304d; color: #c5a6f4; }
