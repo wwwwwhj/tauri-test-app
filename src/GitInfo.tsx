@@ -1,49 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import {
+  GIT_INFO_AUTO_REFRESH_MS,
+  isGitInfoCacheStale,
+  readGitInfoCache,
+  writeGitInfoCache,
+  type GitRepositoryInfo,
+} from "./gitInfoCache";
 import "./GitInfo.css";
-
-interface GitRemoteInfo {
-  name: string;
-  fetchUrl: string;
-  pushUrl: string;
-}
-
-interface GitConfigEntry {
-  key: string;
-  value: string;
-  origin: string | null;
-  sourceScope: string;
-}
-
-interface GitConfigLayers {
-  global: GitConfigEntry[];
-  local: GitConfigEntry[];
-  effective: GitConfigEntry[];
-}
-
-interface GitWorkingState {
-  clean: boolean;
-  staged: number;
-  unstaged: number;
-  untracked: number;
-  conflicted: number;
-}
-
-interface GitRepositoryInfo {
-  repositoryPath: string;
-  gitDir: string;
-  gitVersion: string;
-  currentBranch: string;
-  detachedHead: boolean;
-  headHash: string | null;
-  headShortHash: string | null;
-  upstream: string | null;
-  ahead: number;
-  behind: number;
-  workingState: GitWorkingState;
-  remotes: GitRemoteInfo[];
-  config: GitConfigLayers;
-}
 
 interface GitInfoProps {
   repoPath: string;
@@ -82,11 +46,22 @@ function scopeLabel(scope: string) {
   return scope || "Other";
 }
 
+function formatLastUpdated(timestamp: number | null) {
+  if (!timestamp) return "Not cached";
+  return `Updated ${new Date(timestamp).toLocaleString()}`;
+}
+
 export default function GitInfo({ repoPath }: GitInfoProps) {
-  const [info, setInfo] = useState<GitRepositoryInfo | null>(null);
+  const initialCache = readGitInfoCache(repoPath);
+  const [info, setInfo] = useState<GitRepositoryInfo | null>(initialCache?.info ?? null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(
+    initialCache?.updatedAt ?? null,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [configScope, setConfigScope] = useState<ConfigScope>("effective");
+  const activeRepoRef = useRef(repoPath);
+  const requestRef = useRef(0);
 
   const syncLabel = useMemo(() => {
     if (!info?.upstream) return "No upstream";
@@ -96,26 +71,74 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
 
   const visibleConfig = info?.config[configScope] ?? [];
 
-  async function loadInfo() {
+  async function fetchInfo(path: string) {
+    const request = ++requestRef.current;
     setLoading(true);
     setError("");
 
     try {
       const result = await invoke<GitRepositoryInfo>("get_git_repository_info", {
-        repoPath,
+        repoPath: path,
       });
+
+      if (requestRef.current !== request || activeRepoRef.current !== path) return;
+
+      const updatedAt = Date.now();
+      writeGitInfoCache(path, result, updatedAt);
       setInfo(result);
+      setLastUpdatedAt(updatedAt);
     } catch (err) {
+      if (requestRef.current !== request || activeRepoRef.current !== path) return;
+      // Keep an existing cached snapshot visible when a refresh fails.
       setError(String(err));
-      setInfo(null);
     } finally {
-      setLoading(false);
+      if (requestRef.current === request && activeRepoRef.current === path) {
+        setLoading(false);
+      }
+    }
+  }
+
+  function refreshIfStale(path: string) {
+    const cached = readGitInfoCache(path);
+    if (isGitInfoCacheStale(cached)) {
+      void fetchInfo(path);
     }
   }
 
   useEffect(() => {
+    activeRepoRef.current = repoPath;
+    ++requestRef.current;
     setConfigScope("effective");
-    void loadInfo();
+    setError("");
+
+    const cached = readGitInfoCache(repoPath);
+    setInfo(cached?.info ?? null);
+    setLastUpdatedAt(cached?.updatedAt ?? null);
+    setLoading(false);
+
+    if (isGitInfoCacheStale(cached)) {
+      void fetchInfo(repoPath);
+    }
+  }, [repoPath]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshIfStale(repoPath);
+      }
+    }, GIT_INFO_AUTO_REFRESH_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshIfStale(repoPath);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [repoPath]);
 
   if (loading && !info) {
@@ -127,7 +150,7 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
       <section className="git-info-shell git-info-state git-info-error">
         <strong>Unable to read repository settings.</strong>
         <span>{error}</span>
-        <button type="button" className="secondary-button" onClick={() => void loadInfo()}>
+        <button type="button" className="secondary-button" onClick={() => void fetchInfo(repoPath)}>
           Retry
         </button>
       </section>
@@ -146,17 +169,29 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
           <span>{info.gitVersion}</span>
           <span className="settings-readonly-badge">READ ONLY</span>
         </div>
-        <button
-          type="button"
-          className="secondary-button compact-button"
-          disabled={loading}
-          onClick={() => void loadInfo()}
-        >
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
+
+        <div className="settings-toolbar-actions">
+          <div className="settings-cache-meta" title="Repository settings are cached per repository">
+            <span className="settings-cache-dot" />
+            <span>{formatLastUpdated(lastUpdatedAt)}</span>
+            <span>Auto refresh · 10 min</span>
+          </div>
+          <button
+            type="button"
+            className="secondary-button compact-button"
+            disabled={loading}
+            onClick={() => void fetchInfo(repoPath)}
+          >
+            {loading ? "Refreshing…" : "Refresh now"}
+          </button>
+        </div>
       </header>
 
-      {error && <div className="detail-error">{error}</div>}
+      {error && (
+        <div className="detail-error">
+          Refresh failed. Showing the last cached snapshot. {error}
+        </div>
+      )}
 
       <div className="git-info-content">
         <section className="git-info-card git-info-overview-card">
@@ -258,7 +293,7 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
           </div>
 
           <div className="git-config-note">
-            当前页面只读取配置，不执行 git config 写入。HTTP authorization headers、raw credentials 等敏感配置不会被读取。
+            当前页面只读取配置，不执行 git config 写入。HTTP authorization headers、raw credentials 等敏感配置不会被读取。当前快照按仓库缓存，过期后才后台刷新，也可使用 Refresh now 强制读取。
           </div>
 
           {visibleConfig.length === 0 ? (
