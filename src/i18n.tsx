@@ -330,8 +330,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const t = (key: TranslationKey, vars?: Record<string, string | number>) => {
       let text = dictionaries[language][key] ?? zhCN[key];
       if (vars) {
-        for (const [name, value] of Object.entries(vars)) {
-          text = text.replaceAll(`{${name}}`, String(value));
+        for (const [name, replacement] of Object.entries(vars)) {
+          const token = `{${name}}`;
+          text = text.split(token).join(String(replacement));
         }
       }
       return text;
