@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./GitInfo.css";
 
@@ -42,7 +42,7 @@ interface GitInfoProps {
   repoPath: string;
 }
 
-function Value({ children, mono = false }: { children: React.ReactNode; mono?: boolean }) {
+function Value({ children, mono = false }: { children: ReactNode; mono?: boolean }) {
   return <span className={mono ? "git-info-value mono" : "git-info-value"}>{children}</span>;
 }
 
@@ -131,11 +131,15 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
             </div>
             <div className="git-info-row">
               <span>Current branch</span>
-              <Value>{info.currentBranch}</Value>
+              <Value>{info.detachedHead ? "DETACHED HEAD" : info.currentBranch}</Value>
             </div>
             <div className="git-info-row">
               <span>HEAD</span>
-              <Value mono>{info.headHash ?? "No commits yet"}</Value>
+              <Value mono>
+                {info.headShortHash && info.headHash
+                  ? `${info.headShortHash} · ${info.headHash}`
+                  : "No commits yet"}
+              </Value>
             </div>
             <div className="git-info-row">
               <span>Upstream</span>
