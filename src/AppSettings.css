@@ -156,6 +156,29 @@ html[data-density="spacious"] .commit-content {
   padding-bottom: 17px;
 }
 
+html[data-log-author-email="hide"] .commit-details > span:nth-of-type(2) {
+  display: none !important;
+}
+
+html[data-diff-wrap="wrap"] .diff-line {
+  width: 100%;
+  min-width: 0;
+}
+
+html[data-diff-wrap="wrap"] .diff-line-content {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+html[data-diff-line-numbers="hide"] .diff-line {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+html[data-diff-line-numbers="hide"] .diff-line-number {
+  display: none;
+}
+
 /* Keep the application work area aligned with the dynamic toolbar height. */
 .view-tabs + .workspace,
 .workspace,
