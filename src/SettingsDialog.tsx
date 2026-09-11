@@ -8,13 +8,15 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
-type SettingsSection = "general" | "appearance";
+type SettingsSection = "general" | "appearance" | "log" | "diff";
 
 const COPY = {
   "zh-CN": {
     title: "设置",
     general: "常规",
     appearance: "外观",
+    log: "Git 日志",
+    diff: "Diff",
     language: "语言",
     languageDescription: "选择应用界面语言。",
     chinese: "简体中文",
@@ -39,7 +41,16 @@ const COPY = {
     green: "绿色",
     orange: "橙色",
     rose: "玫红",
+    showAuthorEmail: "显示作者邮箱",
+    showAuthorEmailDescription: "在提交列表的作者名称后显示邮箱地址。",
+    wrapDiff: "Diff 自动换行",
+    wrapDiffDescription: "长 Diff 行在窗口宽度内自动换行，而不是横向滚动。",
+    showDiffLineNumbers: "显示 Diff 行号",
+    showDiffLineNumbersDescription: "在 Diff 查看器左侧显示行序号栏。",
+    enabled: "开启",
+    disabled: "关闭",
     reset: "恢复外观默认值",
+    resetAll: "恢复行为默认值",
     close: "关闭",
     immediate: "更改会立即应用并自动保存。",
   },
@@ -47,6 +58,8 @@ const COPY = {
     title: "Settings",
     general: "General",
     appearance: "Appearance",
+    log: "Git Log",
+    diff: "Diff",
     language: "Language",
     languageDescription: "Choose the application interface language.",
     chinese: "简体中文",
@@ -71,7 +84,16 @@ const COPY = {
     green: "Green",
     orange: "Orange",
     rose: "Rose",
+    showAuthorEmail: "Show author email",
+    showAuthorEmailDescription: "Show the author email address after the author name in the commit list.",
+    wrapDiff: "Wrap diff lines",
+    wrapDiffDescription: "Wrap long diff lines to the viewport instead of scrolling horizontally.",
+    showDiffLineNumbers: "Show diff line numbers",
+    showDiffLineNumbersDescription: "Show the line-number gutter on the left side of diff viewers.",
+    enabled: "On",
+    disabled: "Off",
     reset: "Restore appearance defaults",
+    resetAll: "Restore behavior defaults",
     close: "Close",
     immediate: "Changes are applied immediately and saved automatically.",
   },
@@ -116,30 +138,22 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
         <div className="application-settings-body">
           <nav className="settings-sections" aria-label={copy.title}>
-            <button
-              type="button"
-              className={section === "general" ? "active" : ""}
-              onClick={() => setSection("general")}
-            >
-              {copy.general}
-            </button>
-            <button
-              type="button"
-              className={section === "appearance" ? "active" : ""}
-              onClick={() => setSection("appearance")}
-            >
-              {copy.appearance}
-            </button>
+            {(["general", "appearance", "log", "diff"] as const).map((item) => (
+              <button
+                type="button"
+                key={item}
+                className={section === item ? "active" : ""}
+                onClick={() => setSection(item)}
+              >
+                {copy[item]}
+              </button>
+            ))}
           </nav>
 
           <div className="settings-content">
-            {section === "general" ? (
+            {section === "general" && (
               <>
-                <div className="settings-page-heading">
-                  <h2>{copy.general}</h2>
-                  <span>{copy.immediate}</span>
-                </div>
-
+                <PageHeading title={copy.general} subtitle={copy.immediate} />
                 <SettingRow title={copy.language} description={copy.languageDescription}>
                   <select
                     value={language}
@@ -149,7 +163,6 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                     <option value="en-US">{copy.english}</option>
                   </select>
                 </SettingRow>
-
                 <SettingRow title={copy.theme} description={copy.themeDescription}>
                   <SegmentedControl<ThemeMode>
                     value={theme}
@@ -161,13 +174,11 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                   />
                 </SettingRow>
               </>
-            ) : (
-              <>
-                <div className="settings-page-heading">
-                  <h2>{copy.appearance}</h2>
-                  <span>{copy.immediate}</span>
-                </div>
+            )}
 
+            {section === "appearance" && (
+              <>
+                <PageHeading title={copy.appearance} subtitle={copy.immediate} />
                 <SettingRow title={copy.uiFontSize} description={copy.uiFontDescription}>
                   <FontSizeControl
                     value={settings.uiFontSize}
@@ -176,7 +187,6 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                     onChange={(uiFontSize) => updateSettings({ uiFontSize })}
                   />
                 </SettingRow>
-
                 <SettingRow title={copy.monoFontSize} description={copy.monoFontDescription}>
                   <FontSizeControl
                     value={settings.monoFontSize}
@@ -185,7 +195,6 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                     onChange={(monoFontSize) => updateSettings({ monoFontSize })}
                   />
                 </SettingRow>
-
                 <SettingRow title={copy.density} description={copy.densityDescription}>
                   <SegmentedControl<UiDensity>
                     value={settings.density}
@@ -195,7 +204,6 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                     onChange={(density) => updateSettings({ density })}
                   />
                 </SettingRow>
-
                 <SettingRow title={copy.accent} description={copy.accentDescription}>
                   <div className="accent-options">
                     {ACCENT_ORDER.map((accent) => (
@@ -213,7 +221,6 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                     ))}
                   </div>
                 </SettingRow>
-
                 <div className="settings-reset-row">
                   <button type="button" className="secondary-button" onClick={resetAppearance}>
                     {copy.reset}
@@ -221,9 +228,57 @@ export default function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 </div>
               </>
             )}
+
+            {section === "log" && (
+              <>
+                <PageHeading title={copy.log} subtitle={copy.immediate} />
+                <SettingRow title={copy.showAuthorEmail} description={copy.showAuthorEmailDescription}>
+                  <BooleanControl
+                    value={settings.logShowAuthorEmail}
+                    onLabel={copy.enabled}
+                    offLabel={copy.disabled}
+                    onChange={(logShowAuthorEmail) => updateSettings({ logShowAuthorEmail })}
+                  />
+                </SettingRow>
+              </>
+            )}
+
+            {section === "diff" && (
+              <>
+                <PageHeading title={copy.diff} subtitle={copy.immediate} />
+                <SettingRow title={copy.wrapDiff} description={copy.wrapDiffDescription}>
+                  <BooleanControl
+                    value={settings.diffWrapLines}
+                    onLabel={copy.enabled}
+                    offLabel={copy.disabled}
+                    onChange={(diffWrapLines) => updateSettings({ diffWrapLines })}
+                  />
+                </SettingRow>
+                <SettingRow
+                  title={copy.showDiffLineNumbers}
+                  description={copy.showDiffLineNumbersDescription}
+                >
+                  <BooleanControl
+                    value={settings.diffShowLineNumbers}
+                    onLabel={copy.enabled}
+                    offLabel={copy.disabled}
+                    onChange={(diffShowLineNumbers) => updateSettings({ diffShowLineNumbers })}
+                  />
+                </SettingRow>
+              </>
+            )}
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function PageHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="settings-page-heading">
+      <h2>{title}</h2>
+      <span>{subtitle}</span>
     </div>
   );
 }
@@ -270,6 +325,29 @@ function FontSizeControl({
         onChange={(event) => onChange(Number(event.currentTarget.value))}
       />
       <span>{value}px</span>
+    </div>
+  );
+}
+
+function BooleanControl({
+  value,
+  onLabel,
+  offLabel,
+  onChange,
+}: {
+  value: boolean;
+  onLabel: string;
+  offLabel: string;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="settings-segmented">
+      <button type="button" className={!value ? "active" : ""} onClick={() => onChange(false)}>
+        {offLabel}
+      </button>
+      <button type="button" className={value ? "active" : ""} onClick={() => onChange(true)}>
+        {onLabel}
+      </button>
     </div>
   );
 }
