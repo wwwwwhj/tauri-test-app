@@ -1,0 +1,50 @@
+html[data-theme="light"] .branch-badge,
+html[data-theme="light"] .filter-active-badge,
+html[data-theme="light"] .ref-branch {
+  border-color: #a9c6f2;
+  background: #edf4ff;
+  color: #245eae !important;
+}
+
+html[data-theme="light"] .ref-remote {
+  border-color: #c8cbd0;
+  background: #f2f3f4;
+  color: #686d75;
+}
+
+html[data-theme="light"] .ref-tag {
+  border-color: #dfc783;
+  background: #fff8dc;
+  color: #76590d;
+}
+
+html[data-theme="light"] .ref-head {
+  border-color: #c6b2e9;
+  background: #f4effc;
+  color: #6946a3;
+}
+
+html[data-theme="light"] .config-scope-badge {
+  border-color: #d0d7de;
+  background: #f6f8fa;
+  color: #57606a;
+}
+
+html[data-theme="light"] .config-scope-badge.scope-local {
+  border-color: #54aeff;
+  background: #ddf4ff;
+  color: #0550ae;
+}
+
+html[data-theme="light"] .config-scope-badge.scope-global {
+  border-color: #a475f9;
+  background: #fbefff;
+  color: #6639ba;
+}
+
+html[data-theme="light"] .repository-remove:hover:not(:disabled),
+html[data-theme="light"] .changes-file-actions .danger-link:hover:not(:disabled),
+html[data-theme="light"] .branch-actions .danger-link:hover:not(:disabled) {
+  background: #fde8e7;
+  color: #c93c37;
+}
