@@ -7,6 +7,7 @@ import {
   writeGitInfoCache,
   type GitRepositoryInfo,
 } from "./gitInfoCache";
+import { useI18n, type TranslationKey } from "./i18n";
 import "./GitInfo.css";
 
 interface GitInfoProps {
@@ -15,21 +16,18 @@ interface GitInfoProps {
 
 type ConfigScope = "effective" | "local" | "global";
 
-const SCOPE_META: Record<
-  ConfigScope,
-  { label: string; description: string }
-> = {
+const SCOPE_KEYS: Record<ConfigScope, { label: TranslationKey; description: TranslationKey }> = {
   effective: {
-    label: "Effective",
-    description: "最终生效值。Local、Global、System、includes 等作用域合并后，Git 实际读取到的配置。",
+    label: "settings.effective",
+    description: "settings.effectiveDescription",
   },
   local: {
-    label: "Local",
-    description: "仅当前仓库的配置层，通常来自 .git/config。它可以覆盖 Global 配置。",
+    label: "settings.local",
+    description: "settings.localDescription",
   },
   global: {
-    label: "Global",
-    description: "当前操作系统用户的 Git 配置层，通常来自 ~/.gitconfig 或用户级 include 文件。",
+    label: "settings.global",
+    description: "settings.globalDescription",
   },
 };
 
@@ -37,21 +35,8 @@ function Value({ children, mono = false }: { children: ReactNode; mono?: boolean
   return <span className={mono ? "git-info-value mono" : "git-info-value"}>{children}</span>;
 }
 
-function scopeLabel(scope: string) {
-  if (scope === "local") return "Local";
-  if (scope === "global") return "Global";
-  if (scope === "system") return "System";
-  if (scope === "worktree") return "Worktree";
-  if (scope === "command") return "Command";
-  return scope || "Other";
-}
-
-function formatLastUpdated(timestamp: number | null) {
-  if (!timestamp) return "Not cached";
-  return `Updated ${new Date(timestamp).toLocaleString()}`;
-}
-
 export default function GitInfo({ repoPath }: GitInfoProps) {
+  const { t, formatDate } = useI18n();
   const initialCache = readGitInfoCache(repoPath);
   const [info, setInfo] = useState<GitRepositoryInfo | null>(initialCache?.info ?? null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(
@@ -64,12 +49,28 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
   const requestRef = useRef(0);
 
   const syncLabel = useMemo(() => {
-    if (!info?.upstream) return "No upstream";
-    if (info.ahead === 0 && info.behind === 0) return "Up to date";
+    if (!info?.upstream) return t("settings.noUpstream");
+    if (info.ahead === 0 && info.behind === 0) return t("settings.upToDate");
     return `↑ ${info.ahead}  ↓ ${info.behind}`;
-  }, [info]);
+  }, [info, t]);
 
   const visibleConfig = info?.config[configScope] ?? [];
+  const activeScopeLabel = t(SCOPE_KEYS[configScope].label);
+  const activeScopeDescription = t(SCOPE_KEYS[configScope].description);
+
+  function scopeLabel(scope: string) {
+    if (scope === "local") return t("settings.local");
+    if (scope === "global") return t("settings.global");
+    if (scope === "system") return t("settings.scopeSystem");
+    if (scope === "worktree") return t("settings.scopeWorktree");
+    if (scope === "command") return t("settings.scopeCommand");
+    return scope || t("settings.scopeOther");
+  }
+
+  function formatLastUpdated(timestamp: number | null) {
+    if (!timestamp) return t("settings.notCached");
+    return t("settings.updated", { time: formatDate(timestamp) });
+  }
 
   async function fetchInfo(path: string) {
     const request = ++requestRef.current;
@@ -89,7 +90,6 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
       setLastUpdatedAt(updatedAt);
     } catch (err) {
       if (requestRef.current !== request || activeRepoRef.current !== path) return;
-      // Keep an existing cached snapshot visible when a refresh fails.
       setError(String(err));
     } finally {
       if (requestRef.current === request && activeRepoRef.current === path) {
@@ -123,15 +123,11 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        refreshIfStale(repoPath);
-      }
+      if (document.visibilityState === "visible") refreshIfStale(repoPath);
     }, GIT_INFO_AUTO_REFRESH_MS);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refreshIfStale(repoPath);
-      }
+      if (document.visibilityState === "visible") refreshIfStale(repoPath);
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -142,16 +138,16 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
   }, [repoPath]);
 
   if (loading && !info) {
-    return <section className="git-info-shell git-info-state">Reading repository settings…</section>;
+    return <section className="git-info-shell git-info-state">{t("common.reading")}</section>;
   }
 
   if (error && !info) {
     return (
       <section className="git-info-shell git-info-state git-info-error">
-        <strong>Unable to read repository settings.</strong>
+        <strong>{t("settings.unable")}</strong>
         <span>{error}</span>
         <button type="button" className="secondary-button" onClick={() => void fetchInfo(repoPath)}>
-          Retry
+          {t("common.retry")}
         </button>
       </section>
     );
@@ -165,16 +161,16 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
     <section className="git-info-shell">
       <header className="git-info-toolbar">
         <div>
-          <strong>Repository Settings</strong>
+          <strong>{t("settings.title")}</strong>
           <span>{info.gitVersion}</span>
-          <span className="settings-readonly-badge">READ ONLY</span>
+          <span className="settings-readonly-badge">{t("settings.readOnly")}</span>
         </div>
 
         <div className="settings-toolbar-actions">
-          <div className="settings-cache-meta" title="Repository settings are cached per repository">
+          <div className="settings-cache-meta" title={t("settings.cacheTitle")}>
             <span className="settings-cache-dot" />
             <span>{formatLastUpdated(lastUpdatedAt)}</span>
-            <span>Auto refresh · 10 min</span>
+            <span>{t("settings.autoRefresh")}</span>
           </div>
           <button
             type="button"
@@ -182,31 +178,31 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
             disabled={loading}
             onClick={() => void fetchInfo(repoPath)}
           >
-            {loading ? "Refreshing…" : "Refresh now"}
+            {loading ? t("common.refreshing") : t("settings.refreshNow")}
           </button>
         </div>
       </header>
 
       {error && (
         <div className="detail-error">
-          Refresh failed. Showing the last cached snapshot. {error}
+          {t("settings.refreshFailed")} {error}
         </div>
       )}
 
       <div className="git-info-content">
         <section className="git-info-card git-info-overview-card">
-          <div className="git-info-card-title">Repository</div>
+          <div className="git-info-card-title">{t("settings.repository")}</div>
           <div className="git-info-grid">
             <div className="git-info-row">
-              <span>Repository root</span>
+              <span>{t("settings.repositoryRoot")}</span>
               <Value mono>{info.repositoryPath}</Value>
             </div>
             <div className="git-info-row">
-              <span>Git directory</span>
+              <span>{t("settings.gitDirectory")}</span>
               <Value mono>{info.gitDir}</Value>
             </div>
             <div className="git-info-row">
-              <span>Current branch</span>
+              <span>{t("settings.currentBranch")}</span>
               <Value>{info.detachedHead ? "DETACHED HEAD" : info.currentBranch}</Value>
             </div>
             <div className="git-info-row">
@@ -214,51 +210,51 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
               <Value mono>
                 {info.headShortHash && info.headHash
                   ? `${info.headShortHash} · ${info.headHash}`
-                  : "No commits yet"}
+                  : t("settings.noCommits")}
               </Value>
             </div>
             <div className="git-info-row">
-              <span>Upstream</span>
-              <Value>{info.upstream ?? "Not configured"}</Value>
+              <span>{t("settings.upstream")}</span>
+              <Value>{info.upstream ?? t("settings.notConfigured")}</Value>
             </div>
             <div className="git-info-row">
-              <span>Sync status</span>
+              <span>{t("settings.syncStatus")}</span>
               <Value>{syncLabel}</Value>
             </div>
           </div>
 
           <div className="git-state-strip">
             <span className={working.clean ? "clean" : "dirty"}>
-              {working.clean ? "Working tree clean" : "Working tree has changes"}
+              {working.clean ? t("settings.workingClean") : t("settings.workingDirty")}
             </span>
-            <span>Staged {working.staged}</span>
-            <span>Unstaged {working.unstaged}</span>
-            <span>Untracked {working.untracked}</span>
+            <span>{t("settings.staged", { count: working.staged })}</span>
+            <span>{t("settings.unstaged", { count: working.unstaged })}</span>
+            <span>{t("settings.untracked", { count: working.untracked })}</span>
             <span className={working.conflicted > 0 ? "conflict" : ""}>
-              Conflicts {working.conflicted}
+              {t("settings.conflicts", { count: working.conflicted })}
             </span>
           </div>
         </section>
 
         <section className="git-info-card">
           <div className="git-info-card-title">
-            <span>Remotes</span>
+            <span>{t("settings.remotes")}</span>
             <small>{info.remotes.length}</small>
           </div>
 
           {info.remotes.length === 0 ? (
-            <div className="git-info-empty">No remotes configured.</div>
+            <div className="git-info-empty">{t("settings.noRemotes")}</div>
           ) : (
             <div className="git-remote-list">
               {info.remotes.map((remote) => (
                 <div className="git-remote-item" key={remote.name}>
                   <strong>{remote.name}</strong>
                   <div>
-                    <span>Fetch</span>
+                    <span>{t("settings.fetch")}</span>
                     <code>{remote.fetchUrl || "—"}</code>
                   </div>
                   <div>
-                    <span>Push</span>
+                    <span>{t("settings.push")}</span>
                     <code>{remote.pushUrl || "—"}</code>
                   </div>
                 </div>
@@ -269,8 +265,8 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
 
         <section className="git-info-card git-config-card">
           <div className="git-info-card-title">
-            <span>Git Configuration</span>
-            <small>Safe keys only · read only</small>
+            <span>{t("settings.gitConfig")}</span>
+            <small>{t("settings.safeReadOnly")}</small>
           </div>
 
           <div className="config-scope-summary">
@@ -281,34 +277,32 @@ export default function GitInfo({ repoPath }: GitInfoProps) {
                 className={configScope === scope ? "active" : ""}
                 onClick={() => setConfigScope(scope)}
               >
-                <strong>{SCOPE_META[scope].label}</strong>
-                <span>{info.config[scope].length} entries</span>
+                <strong>{t(SCOPE_KEYS[scope].label)}</strong>
+                <span>{t("common.entries", { count: info.config[scope].length })}</span>
               </button>
             ))}
           </div>
 
           <div className="config-scope-explainer">
-            <strong>{SCOPE_META[configScope].label}</strong>
-            <span>{SCOPE_META[configScope].description}</span>
+            <strong>{activeScopeLabel}</strong>
+            <span>{activeScopeDescription}</span>
           </div>
 
-          <div className="git-config-note">
-            当前页面只读取配置，不执行 git config 写入。HTTP authorization headers、raw credentials 等敏感配置不会被读取。当前快照按仓库缓存，过期后才后台刷新，也可使用 Refresh now 强制读取。
-          </div>
+          <div className="git-config-note">{t("settings.configNote")}</div>
 
           {visibleConfig.length === 0 ? (
             <div className="git-info-empty">
-              No matching {SCOPE_META[configScope].label.toLowerCase()} configuration entries.
+              {t("settings.noConfig", { scope: activeScopeLabel })}
             </div>
           ) : (
             <div className="git-config-table-wrap">
               <table className="git-config-table repository-settings-table">
                 <thead>
                   <tr>
-                    <th>Key</th>
-                    <th>Value</th>
-                    <th>Source scope</th>
-                    <th>Origin</th>
+                    <th>{t("settings.key")}</th>
+                    <th>{t("settings.value")}</th>
+                    <th>{t("settings.sourceScope")}</th>
+                    <th>{t("settings.origin")}</th>
                   </tr>
                 </thead>
                 <tbody>
