@@ -4,7 +4,7 @@ mod working_tree;
 
 use serde::Serialize;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 use sysinfo::System;
 use tauri_plugin_dialog::DialogExt;
 
@@ -109,6 +109,10 @@ async fn get_git_log(
     repo_path: String,
     skip: Option<usize>,
     limit: Option<usize>,
+    branch_filter: Option<String>,
+    author_filter: Option<String>,
+    message_filter: Option<String>,
+    hash_filter: Option<String>,
 ) -> Result<GitLogResult, String> {
     let path = Path::new(&repo_path);
     validate_git_repository(path)?;
@@ -124,27 +128,90 @@ async fn get_git_log(
         current_branch.trim().to_string()
     };
 
+    let branch_filter = normalize_branch_filter(path, branch_filter.as_deref())?;
+    let author_filter = non_empty(author_filter.as_deref());
+    let message_filter = non_empty(message_filter.as_deref());
+    let hash_filter = non_empty(hash_filter.as_deref());
     let skip = skip.unwrap_or(0);
     let limit = limit.unwrap_or(100).clamp(1, 500);
-    let skip_arg = format!("--skip={skip}");
-    let limit_arg = format!("-n{limit}");
     let format_arg =
         "--pretty=format:%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%D%x1e";
 
-    let output = run_git(
-        path,
-        &[
-            "log",
-            "--all",
-            "--topo-order",
-            "--decorate=full",
-            &skip_arg,
-            &limit_arg,
-            format_arg,
-        ],
-    )?;
+    let commits = if let Some(hash_filter) = hash_filter {
+        if skip > 0 {
+            Vec::new()
+        } else {
+            let resolved_hash = resolve_commit_hash(path, hash_filter)?;
 
-    let commits = output
+            if let Some(branch_ref) = branch_filter.as_deref() {
+                if !is_ancestor(path, &resolved_hash, branch_ref)? {
+                    return Ok(GitLogResult {
+                        repository_path,
+                        current_branch,
+                        commits: Vec::new(),
+                    });
+                }
+            }
+
+            let output = run_git(
+                path,
+                &[
+                    "show",
+                    "-s",
+                    "--decorate=full",
+                    format_arg,
+                    &resolved_hash,
+                ],
+            )?;
+
+            parse_commits(&output, &current_branch)
+                .into_iter()
+                .filter(|commit| matches_commit_filters(commit, author_filter, message_filter))
+                .take(limit)
+                .collect()
+        }
+    } else {
+        let skip_arg = format!("--skip={skip}");
+        let limit_arg = format!("-n{limit}");
+        let mut args = vec![
+            "log".to_string(),
+            "--topo-order".to_string(),
+            "--decorate=full".to_string(),
+            skip_arg,
+            limit_arg,
+            format_arg.to_string(),
+        ];
+
+        if author_filter.is_some() || message_filter.is_some() {
+            args.push("--regexp-ignore-case".to_string());
+        }
+        if let Some(author) = author_filter {
+            args.push(format!("--author={author}"));
+        }
+        if let Some(message) = message_filter {
+            args.push(format!("--grep={message}"));
+        }
+
+        if let Some(branch_ref) = branch_filter {
+            args.push(branch_ref);
+        } else {
+            args.push("--all".to_string());
+        }
+
+        let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        let output = run_git(path, &refs)?;
+        parse_commits(&output, &current_branch)
+    };
+
+    Ok(GitLogResult {
+        repository_path,
+        current_branch,
+        commits,
+    })
+}
+
+fn parse_commits(output: &str, current_branch: &str) -> Vec<GitCommit> {
+    output
         .split('\x1e')
         .filter_map(|record| {
             let record = record.trim();
@@ -168,16 +235,70 @@ async fn get_git_log(
                 author_email: fields[4].to_string(),
                 date: fields[5].to_string(),
                 message: fields[6].to_string(),
-                refs: parse_git_refs(fields[7], &current_branch),
+                refs: parse_git_refs(fields[7], current_branch),
             })
         })
-        .collect();
+        .collect()
+}
 
-    Ok(GitLogResult {
-        repository_path,
-        current_branch,
-        commits,
-    })
+fn matches_commit_filters(
+    commit: &GitCommit,
+    author_filter: Option<&str>,
+    message_filter: Option<&str>,
+) -> bool {
+    let author_matches = author_filter.map_or(true, |author| {
+        let needle = author.to_lowercase();
+        commit.author_name.to_lowercase().contains(&needle)
+            || commit.author_email.to_lowercase().contains(&needle)
+    });
+
+    let message_matches = message_filter.map_or(true, |message| {
+        commit
+            .message
+            .to_lowercase()
+            .contains(&message.to_lowercase())
+    });
+
+    author_matches && message_matches
+}
+
+fn non_empty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn normalize_branch_filter(path: &Path, value: Option<&str>) -> Result<Option<String>, String> {
+    let Some(value) = non_empty(value) else {
+        return Ok(None);
+    };
+
+    if !(value.starts_with("refs/heads/") || value.starts_with("refs/remotes/")) {
+        return Err("无效的 branch filter".to_string());
+    }
+
+    let revision = format!("{value}^{{commit}}");
+    run_git(path, &["rev-parse", "--verify", &revision])?;
+    Ok(Some(value.to_string()))
+}
+
+fn resolve_commit_hash(path: &Path, value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if !(4..=64).contains(&value.len()) || !value.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("Commit hash 必须是至少 4 位的十六进制 hash".to_string());
+    }
+
+    let revision = format!("{value}^{{commit}}");
+    Ok(run_git(path, &["rev-parse", "--verify", &revision])?
+        .trim()
+        .to_string())
+}
+
+fn is_ancestor(path: &Path, commit: &str, branch_ref: &str) -> Result<bool, String> {
+    let output = command_output(path, &["merge-base", "--is-ancestor", commit, branch_ref])?;
+    match output.status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(command_error(&output)),
+    }
 }
 
 fn parse_git_refs(value: &str, current_branch: &str) -> Vec<GitRefInfo> {
@@ -253,8 +374,8 @@ fn validate_git_repository(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn run_git(path: &Path, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+fn command_output(path: &Path, args: &[&str]) -> Result<Output, String> {
+    Command::new("git")
         .arg("-C")
         .arg(path)
         .arg("-c")
@@ -267,15 +388,23 @@ fn run_git(path: &Path, args: &[&str]) -> Result<String, String> {
             format!(
                 "无法执行 Git。请确认系统已安装 git 并已加入 PATH：{error}"
             )
-        })?;
+        })
+}
+
+fn command_error(output: &Output) -> String {
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if stderr.is_empty() {
+        format!("Git 命令执行失败，退出码：{:?}", output.status.code())
+    } else {
+        stderr
+    }
+}
+
+fn run_git(path: &Path, args: &[&str]) -> Result<String, String> {
+    let output = command_output(path, args)?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(if stderr.is_empty() {
-            format!("Git 命令执行失败，退出码：{:?}", output.status.code())
-        } else {
-            stderr
-        });
+        return Err(command_error(&output));
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
