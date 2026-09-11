@@ -6,14 +6,27 @@ import "./App.css";
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
+  const [cpuMsg, setCpuMsg] = useState("");
 
   async function greet() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMsg(await invoke("greet", { name }));
   }
 
+  async function cpu_info() {
+    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+      setCpuMsg(await invoke("get_cpu_info"));
+  }
+   function my_custom_command() {
+      invoke('my_custom_command').then((message) => console.log(message));
+  }
+
   return (
     <main className="container">
+        <p>{JSON.stringify(cpuMsg)}</p>
+        <button onClick={cpu_info}>cpu_info</button>
+        <button onClick={my_custom_command}>my_custom_command</button>
+
       <h1>Welcome to Tauri + React</h1>
 
       <div className="row">
