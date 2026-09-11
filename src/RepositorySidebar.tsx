@@ -13,6 +13,17 @@ function repositoryName(path: string) {
   return parts.length > 0 ? parts[parts.length - 1] : path;
 }
 
+function RepositoryIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="4" cy="3.5" r="1.5" strokeWidth="1.25" />
+      <circle cx="4" cy="12.5" r="1.5" strokeWidth="1.25" />
+      <circle cx="12" cy="6" r="1.5" strokeWidth="1.25" />
+      <path d="M4 5v6M5.5 11.8C9.5 11.3 10.5 9.1 10.5 7.4" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function RepositorySidebar({
   repositories,
   activePath,
@@ -60,7 +71,9 @@ export default function RepositorySidebar({
                   disabled={loading && !active}
                   title={path}
                 >
-                  <span className="repository-icon">⌘</span>
+                  <span className="repository-icon">
+                    <RepositoryIcon />
+                  </span>
                   <span className="repository-text">
                     <strong>{repositoryName(path)}</strong>
                     <small>{path}</small>
