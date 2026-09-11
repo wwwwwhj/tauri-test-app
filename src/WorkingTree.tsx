@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useI18n } from "./i18n";
 import type {
   WorkingFileDiff,
   WorkingTreeArea,
@@ -86,6 +87,8 @@ function FileGroup({
   onUnstage: (file: WorkingTreeFile) => void;
   onDiscard: (area: WorkingTreeArea, file: WorkingTreeFile) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <section className="changes-group">
       <div className="changes-group-title">
@@ -94,7 +97,7 @@ function FileGroup({
       </div>
 
       {files.length === 0 ? (
-        <div className="changes-group-empty">No files</div>
+        <div className="changes-group-empty">{t("common.noFiles")}</div>
       ) : (
         <div className="changes-file-list">
           {files.map((file) => {
@@ -125,11 +128,11 @@ function FileGroup({
                 <div className="changes-file-actions">
                   {area === "staged" ? (
                     <button type="button" disabled={busy} onClick={() => onUnstage(file)}>
-                      Unstage
+                      {t("changes.unstage")}
                     </button>
                   ) : (
                     <button type="button" disabled={busy} onClick={() => onStage(file)}>
-                      Stage
+                      {t("changes.stage")}
                     </button>
                   )}
                   {area !== "staged" && (
@@ -139,7 +142,7 @@ function FileGroup({
                       disabled={busy}
                       onClick={() => onDiscard(area, file)}
                     >
-                      Discard
+                      {t("changes.discard")}
                     </button>
                   )}
                 </div>
@@ -158,6 +161,7 @@ export default function WorkingTree({
   initialScrollTop = 0,
   onScrollTopChange,
 }: WorkingTreeProps) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<WorkingTreeStatus>(EMPTY_STATUS);
   const [selected, setSelected] = useState<FileSelection | null>(null);
   const [diff, setDiff] = useState<WorkingFileDiff | null>(null);
@@ -287,8 +291,8 @@ export default function WorkingTree({
 
   async function discard(area: WorkingTreeArea, file: WorkingTreeFile) {
     const warning = area === "untracked"
-      ? `Delete untracked file permanently?\n\n${file.path}`
-      : `Discard local changes permanently?\n\n${file.path}`;
+      ? t("changes.deleteUntrackedConfirm", { path: file.path })
+      : t("changes.discardConfirm", { path: file.path });
 
     if (!window.confirm(warning)) return;
 
@@ -322,7 +326,7 @@ export default function WorkingTree({
         message,
       });
       setCommitMessage("");
-      setNotice(result.trim() || "Commit created.");
+      setNotice(result.trim() || t("changes.commitCreated"));
       await loadStatus();
       await onCommitted();
     } catch (err) {
@@ -337,8 +341,8 @@ export default function WorkingTree({
       <aside className="changes-panel">
         <div className="changes-toolbar">
           <div>
-            <strong>Local Changes</strong>
-            <span>{loadingStatus ? "Reading…" : `${totalChanges} files`}</span>
+            <strong>{t("changes.title")}</strong>
+            <span>{loadingStatus ? t("common.reading") : t("common.files", { count: totalChanges })}</span>
           </div>
           <button
             type="button"
@@ -346,7 +350,7 @@ export default function WorkingTree({
             disabled={busy || loadingStatus}
             onClick={() => void loadStatus()}
           >
-            Refresh
+            {t("common.refresh")}
           </button>
         </div>
 
@@ -359,7 +363,7 @@ export default function WorkingTree({
           onScroll={(event) => onScrollTopChange?.(event.currentTarget.scrollTop)}
         >
           <FileGroup
-            title="Staged Changes"
+            title={t("changes.staged")}
             area="staged"
             files={status.staged}
             selected={selected}
@@ -370,7 +374,7 @@ export default function WorkingTree({
             onDiscard={(area, file) => void discard(area, file)}
           />
           <FileGroup
-            title="Unstaged Changes"
+            title={t("changes.unstaged")}
             area="unstaged"
             files={status.unstaged}
             selected={selected}
@@ -381,7 +385,7 @@ export default function WorkingTree({
             onDiscard={(area, file) => void discard(area, file)}
           />
           <FileGroup
-            title="Untracked Files"
+            title={t("changes.untracked")}
             area="untracked"
             files={status.untracked}
             selected={selected}
@@ -397,18 +401,18 @@ export default function WorkingTree({
           <textarea
             value={commitMessage}
             onChange={(event) => setCommitMessage(event.currentTarget.value)}
-            placeholder="Commit message"
+            placeholder={t("changes.commitMessage")}
             rows={3}
           />
           <div className="commit-box-footer">
-            <span>{status.staged.length} staged</span>
+            <span>{t("common.stagedCount", { count: status.staged.length })}</span>
             <button
               type="button"
               className="primary-button"
               disabled={busy || status.staged.length === 0 || commitMessage.trim().length === 0}
               onClick={() => void commit()}
             >
-              Commit
+              {t("changes.commit")}
             </button>
           </div>
         </div>
@@ -417,22 +421,22 @@ export default function WorkingTree({
       <section className="working-diff-panel">
         <div className="detail-section-title diff-title">
           <strong>
-            {selected ? `${selected.area}: ${selected.file.path}` : "Working Tree Diff"}
+            {selected ? `${selected.area}: ${selected.file.path}` : t("changes.diffTitle")}
           </strong>
-          {loadingDiff && <span>Reading…</span>}
+          {loadingDiff && <span>{t("common.reading")}</span>}
         </div>
 
         {!selected ? (
-          <div className="detail-empty">Working tree is clean.</div>
+          <div className="detail-empty">{t("changes.clean")}</div>
         ) : loadingDiff ? (
-          <div className="detail-empty">Loading diff…</div>
+          <div className="detail-empty">{t("changes.loadingDiff")}</div>
         ) : diff ? (
           <>
             {diff.truncated && (
-              <div className="diff-warning">Diff is large. Showing the first 400,000 characters.</div>
+              <div className="diff-warning">{t("changes.largeDiff")}</div>
             )}
             {diff.content.length === 0 ? (
-              <div className="detail-empty">No text diff available.</div>
+              <div className="detail-empty">{t("changes.noTextDiff")}</div>
             ) : (
               <pre className="diff-viewer">
                 {diffLines.map((line, index) => (
@@ -445,7 +449,7 @@ export default function WorkingTree({
             )}
           </>
         ) : (
-          <div className="detail-empty">No diff.</div>
+          <div className="detail-empty">{t("changes.noDiff")}</div>
         )}
       </section>
     </section>
