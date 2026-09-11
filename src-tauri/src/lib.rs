@@ -1,5 +1,6 @@
 mod branches;
 mod git_detail;
+mod git_info;
 mod working_tree;
 
 use serde::Serialize;
@@ -424,6 +425,7 @@ pub fn run() {
             get_git_log,
             git_detail::get_commit_files,
             git_detail::get_commit_file_diff,
+            git_info::get_git_repository_info,
             working_tree::get_working_tree,
             working_tree::get_working_file_diff,
             working_tree::stage_working_file,
