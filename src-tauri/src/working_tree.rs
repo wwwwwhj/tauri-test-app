@@ -85,6 +85,11 @@ pub async fn get_working_file_diff(
             "--".into(),
         ],
         "untracked" => {
+            let null_device = if cfg!(target_os = "windows") {
+                "NUL"
+            } else {
+                "/dev/null"
+            };
             let output = run_git_allow_diff_exit(
                 path,
                 &[
@@ -93,7 +98,7 @@ pub async fn get_working_file_diff(
                     "--no-ext-diff",
                     "--unified=3",
                     "--",
-                    "/dev/null",
+                    null_device,
                     &file_path,
                 ],
             )?;
