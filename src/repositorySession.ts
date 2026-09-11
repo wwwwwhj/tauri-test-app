@@ -1,4 +1,4 @@
-export type AppView = "log" | "changes" | "branches";
+export type AppView = "log" | "changes" | "branches" | "info";
 
 export interface LogFilters {
   message: string;
@@ -81,7 +81,10 @@ function normalizeSession(value: unknown): RepositorySession {
 
   return {
     activeView:
-      activeView === "changes" || activeView === "branches" || activeView === "log"
+      activeView === "changes" ||
+      activeView === "branches" ||
+      activeView === "info" ||
+      activeView === "log"
         ? activeView
         : "log",
     logFilters: normalizeFilters(record.logFilters),
