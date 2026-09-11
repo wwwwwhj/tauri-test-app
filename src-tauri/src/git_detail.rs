@@ -68,6 +68,7 @@ pub async fn get_commit_file_diff(
     repo_path: String,
     commit_hash: String,
     file_path: String,
+    old_path: Option<String>,
 ) -> Result<GitFileDiff, String> {
     let path = Path::new(&repo_path);
     validate_git_repository(path)?;
@@ -78,35 +79,37 @@ pub async fn get_commit_file_diff(
     }
 
     let output = if let Some(parent) = get_first_parent(path, &commit_hash)? {
-        run_git(
-            path,
-            &[
-                "diff",
-                "--no-ext-diff",
-                "--find-renames",
-                "--find-copies",
-                "--unified=3",
-                &parent,
-                &commit_hash,
-                "--",
-                &file_path,
-            ],
-        )?
+        let mut args = vec![
+            "diff",
+            "--no-ext-diff",
+            "--find-renames",
+            "--find-copies",
+            "--unified=3",
+            &parent,
+            &commit_hash,
+            "--",
+        ];
+        if let Some(ref previous_path) = old_path {
+            args.push(previous_path);
+        }
+        args.push(&file_path);
+        run_git(path, &args)?
     } else {
-        run_git(
-            path,
-            &[
-                "show",
-                "--format=",
-                "--no-ext-diff",
-                "--find-renames",
-                "--find-copies",
-                "--unified=3",
-                &commit_hash,
-                "--",
-                &file_path,
-            ],
-        )?
+        let mut args = vec![
+            "show",
+            "--format=",
+            "--no-ext-diff",
+            "--find-renames",
+            "--find-copies",
+            "--unified=3",
+            &commit_hash,
+            "--",
+        ];
+        if let Some(ref previous_path) = old_path {
+            args.push(previous_path);
+        }
+        args.push(&file_path);
+        run_git(path, &args)?
     };
 
     let total_chars = output.chars().count();
