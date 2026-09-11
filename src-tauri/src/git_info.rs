@@ -10,12 +10,21 @@ pub struct GitRemoteInfo {
     push_url: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitConfigEntry {
     key: String,
     value: String,
     origin: Option<String>,
+    source_scope: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitConfigLayers {
+    global: Vec<GitConfigEntry>,
+    local: Vec<GitConfigEntry>,
+    effective: Vec<GitConfigEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,7 +52,7 @@ pub struct GitRepositoryInfo {
     behind: usize,
     working_state: GitWorkingState,
     remotes: Vec<GitRemoteInfo>,
-    config: Vec<GitConfigEntry>,
+    config: GitConfigLayers,
 }
 
 const SAFE_CONFIG_KEYS: &[&str] = &[
@@ -130,7 +139,7 @@ pub async fn get_git_repository_info(repo_path: String) -> Result<GitRepositoryI
         behind,
         working_state: read_working_state(path)?,
         remotes: read_remotes(path)?,
-        config: read_safe_config(path)?,
+        config: read_config_layers(path)?,
     })
 }
 
@@ -214,43 +223,188 @@ fn read_remotes(path: &Path) -> Result<Vec<GitRemoteInfo>, String> {
     Ok(remotes)
 }
 
-fn read_safe_config(path: &Path) -> Result<Vec<GitConfigEntry>, String> {
-    let mut config = Vec::new();
+fn read_config_layers(path: &Path) -> Result<GitConfigLayers, String> {
+    let mut global = Vec::new();
+    let mut local = Vec::new();
+    let mut effective = Vec::new();
 
     for key in SAFE_CONFIG_KEYS {
-        let Some(value) = run_git_optional(path, &["config", "--get", key])? else {
-            continue;
-        };
-        let value = value.trim().to_string();
-        if value.is_empty() {
-            continue;
-        }
+        let global_entries = read_scoped_config(path, key, "--global", "global")?;
+        let local_entries = read_scoped_config(path, key, "--local", "local")?;
+        let effective_entries = read_effective_config(path, key, &global_entries, &local_entries)?;
 
-        let origin = run_git_optional(path, &["config", "--show-origin", "--get", key])?
-            .and_then(|output| parse_config_origin(&output));
-
-        config.push(GitConfigEntry {
-            key: (*key).to_string(),
-            value,
-            origin,
-        });
+        global.extend(global_entries);
+        local.extend(local_entries);
+        effective.extend(effective_entries);
     }
 
-    Ok(config)
+    Ok(GitConfigLayers {
+        global,
+        local,
+        effective,
+    })
 }
 
-fn parse_config_origin(output: &str) -> Option<String> {
-    let line = output.lines().next()?.trim();
-    if line.is_empty() {
-        return None;
+fn read_scoped_config(
+    path: &Path,
+    key: &str,
+    scope_flag: &str,
+    scope_name: &str,
+) -> Result<Vec<GitConfigEntry>, String> {
+    let Some(output) = run_git_optional(
+        path,
+        &["config", scope_flag, "--show-origin", "--get-all", key],
+    )? else {
+        return Ok(Vec::new());
+    };
+
+    Ok(parse_origin_value_lines(&output)
+        .into_iter()
+        .map(|(origin, value)| GitConfigEntry {
+            key: key.to_string(),
+            value,
+            origin,
+            source_scope: scope_name.to_string(),
+        })
+        .collect())
+}
+
+fn read_effective_config(
+    path: &Path,
+    key: &str,
+    global_entries: &[GitConfigEntry],
+    local_entries: &[GitConfigEntry],
+) -> Result<Vec<GitConfigEntry>, String> {
+    let scoped_output = command_output(
+        path,
+        &["config", "--show-scope", "--show-origin", "--get-all", key],
+    )?;
+
+    if scoped_output.status.success() {
+        let output = String::from_utf8_lossy(&scoped_output.stdout);
+        let entries = parse_scope_origin_value_lines(&output, key);
+        if !entries.is_empty() {
+            return Ok(entries);
+        }
+    } else if matches!(scoped_output.status.code(), Some(1)) {
+        return Ok(Vec::new());
     }
 
-    if let Some((origin, _)) = line.split_once('\t') {
-        return Some(origin.trim().to_string());
+    // Git versions before --show-scope are still supported. Fall back to
+    // origin-based classification using the independently read local/global layers.
+    let Some(output) = run_git_optional(path, &["config", "--show-origin", "--get-all", key])? else {
+        return Ok(Vec::new());
+    };
+
+    Ok(parse_origin_value_lines(&output)
+        .into_iter()
+        .map(|(origin, value)| {
+            let source_scope = infer_scope(origin.as_deref(), global_entries, local_entries);
+            GitConfigEntry {
+                key: key.to_string(),
+                value,
+                origin,
+                source_scope,
+            }
+        })
+        .collect())
+}
+
+fn parse_scope_origin_value_lines(output: &str, key: &str) -> Vec<GitConfigEntry> {
+    output
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim_end();
+            if line.is_empty() {
+                return None;
+            }
+
+            let parts: Vec<&str> = line.splitn(3, '\t').collect();
+            let (scope, origin, value) = if parts.len() == 3 {
+                (parts[0].trim(), parts[1].trim(), parts[2].to_string())
+            } else {
+                let mut tokens = line.split_whitespace();
+                let scope = tokens.next()?;
+                let origin = tokens.next()?;
+                let prefix_len = line.find(origin)? + origin.len();
+                let value = line[prefix_len..].trim_start().to_string();
+                (scope, origin, value)
+            };
+
+            if value.is_empty() {
+                return None;
+            }
+
+            Some(GitConfigEntry {
+                key: key.to_string(),
+                value,
+                origin: if origin.is_empty() {
+                    None
+                } else {
+                    Some(origin.to_string())
+                },
+                source_scope: scope.to_string(),
+            })
+        })
+        .collect()
+}
+
+fn parse_origin_value_lines(output: &str) -> Vec<(Option<String>, String)> {
+    output
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim_end();
+            if line.is_empty() {
+                return None;
+            }
+
+            let (origin, value) = if let Some((origin, value)) = line.split_once('\t') {
+                (origin.trim(), value.to_string())
+            } else if let Some(index) = line.find(char::is_whitespace) {
+                let origin = line[..index].trim();
+                let value = line[index..].trim_start().to_string();
+                (origin, value)
+            } else {
+                ("", line.to_string())
+            };
+
+            if value.is_empty() {
+                return None;
+            }
+
+            Some((
+                if origin.is_empty() {
+                    None
+                } else {
+                    Some(origin.to_string())
+                },
+                value,
+            ))
+        })
+        .collect()
+}
+
+fn infer_scope(
+    origin: Option<&str>,
+    global_entries: &[GitConfigEntry],
+    local_entries: &[GitConfigEntry],
+) -> String {
+    if let Some(origin) = origin {
+        if local_entries
+            .iter()
+            .any(|entry| entry.origin.as_deref() == Some(origin))
+        {
+            return "local".to_string();
+        }
+        if global_entries
+            .iter()
+            .any(|entry| entry.origin.as_deref() == Some(origin))
+        {
+            return "global".to_string();
+        }
     }
 
-    line.split_once(' ')
-        .map(|(origin, _)| origin.trim().to_string())
+    "other".to_string()
 }
 
 fn parse_ahead_behind(output: &str) -> (usize, usize) {
