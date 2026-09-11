@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN" data-theme="light" data-density="compact">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,11 +13,51 @@
             : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
           document.documentElement.dataset.theme = theme;
           document.documentElement.style.colorScheme = theme;
+          document.querySelector('meta[name="theme-color"]')?.setAttribute(
+            "content",
+            theme === "dark" ? "#1e1f22" : "#f4f5f7",
+          );
 
           const language = localStorage.getItem("git-workbench.language.v1") === "en-US" ? "en-US" : "zh-CN";
           document.documentElement.lang = language;
+
+          const rawSettings = localStorage.getItem("git-workbench.application-settings.v1");
+          if (rawSettings) {
+            const settings = JSON.parse(rawSettings);
+            const accents = {
+              blue: ["#3574f0", "#2f65d2"],
+              purple: ["#7c5ce7", "#694bd0"],
+              green: ["#3d8b5f", "#347750"],
+              orange: ["#c8792b", "#ae6722"],
+              rose: ["#c95575", "#ae4663"],
+            };
+            const uiFontSize = Number(settings.uiFontSize);
+            const monoFontSize = Number(settings.monoFontSize);
+            if (uiFontSize >= 11 && uiFontSize <= 17) {
+              document.documentElement.style.setProperty("--app-ui-font-size", `${uiFontSize}px`);
+            }
+            if (monoFontSize >= 9 && monoFontSize <= 16) {
+              document.documentElement.style.setProperty("--app-mono-font-size", `${monoFontSize}px`);
+            }
+            if (["compact", "comfortable", "spacious"].includes(settings.density)) {
+              document.documentElement.dataset.density = settings.density;
+            }
+            const accent = accents[settings.accentColor];
+            if (accent) {
+              document.documentElement.style.setProperty("--wb-accent", accent[0]);
+              document.documentElement.style.setProperty("--wb-accent-hover", accent[1]);
+              document.documentElement.style.setProperty(
+                "--wb-accent-soft",
+                `color-mix(in srgb, ${accent[0]} 16%, transparent)`,
+              );
+            }
+            document.documentElement.dataset.logAuthorEmail = settings.logShowAuthorEmail === false ? "hide" : "show";
+            document.documentElement.dataset.diffWrap = settings.diffWrapLines === true ? "wrap" : "nowrap";
+            document.documentElement.dataset.diffLineNumbers = settings.diffShowLineNumbers === false ? "hide" : "show";
+          }
         } catch {
           document.documentElement.dataset.theme = "light";
+          document.documentElement.dataset.density = "compact";
           document.documentElement.lang = "zh-CN";
         }
       })();
