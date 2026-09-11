@@ -8,6 +8,9 @@ export interface ApplicationSettings {
   monoFontSize: number;
   density: UiDensity;
   accentColor: AccentColor;
+  logShowAuthorEmail: boolean;
+  diffWrapLines: boolean;
+  diffShowLineNumbers: boolean;
 }
 
 const STORAGE_KEY = "git-workbench.application-settings.v1";
@@ -17,6 +20,9 @@ export const DEFAULT_APPLICATION_SETTINGS: ApplicationSettings = {
   monoFontSize: 11,
   density: "compact",
   accentColor: "blue",
+  logShowAuthorEmail: true,
+  diffWrapLines: false,
+  diffShowLineNumbers: true,
 };
 
 export const ACCENT_COLORS: Record<AccentColor, { value: string; hover: string }> = {
@@ -31,6 +37,7 @@ interface AppSettingsContextValue {
   settings: ApplicationSettings;
   updateSettings: (patch: Partial<ApplicationSettings>) => void;
   resetAppearance: () => void;
+  resetAll: () => void;
 }
 
 const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
@@ -38,6 +45,10 @@ const AppSettingsContext = createContext<AppSettingsContextValue | null>(null);
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
+}
+
+function readBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
 }
 
 function readInitialSettings(): ApplicationSettings {
@@ -52,7 +63,7 @@ function readInitialSettings(): ApplicationSettings {
         : "compact";
     const accentColor: AccentColor =
       parsed.accentColor && parsed.accentColor in ACCENT_COLORS
-        ? parsed.accentColor as AccentColor
+        ? (parsed.accentColor as AccentColor)
         : "blue";
 
     return {
@@ -60,6 +71,15 @@ function readInitialSettings(): ApplicationSettings {
       monoFontSize: clampNumber(parsed.monoFontSize, 9, 16, DEFAULT_APPLICATION_SETTINGS.monoFontSize),
       density,
       accentColor,
+      logShowAuthorEmail: readBoolean(
+        parsed.logShowAuthorEmail,
+        DEFAULT_APPLICATION_SETTINGS.logShowAuthorEmail,
+      ),
+      diffWrapLines: readBoolean(parsed.diffWrapLines, DEFAULT_APPLICATION_SETTINGS.diffWrapLines),
+      diffShowLineNumbers: readBoolean(
+        parsed.diffShowLineNumbers,
+        DEFAULT_APPLICATION_SETTINGS.diffShowLineNumbers,
+      ),
     };
   } catch {
     return DEFAULT_APPLICATION_SETTINGS;
@@ -79,6 +99,9 @@ function applySettings(settings: ApplicationSettings) {
     `color-mix(in srgb, ${accent.value} 16%, transparent)`,
   );
   root.dataset.density = settings.density;
+  root.dataset.logAuthorEmail = settings.logShowAuthorEmail ? "show" : "hide";
+  root.dataset.diffWrap = settings.diffWrapLines ? "wrap" : "nowrap";
+  root.dataset.diffLineNumbers = settings.diffShowLineNumbers ? "show" : "hide";
 }
 
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
@@ -93,7 +116,14 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       settings,
       updateSettings: (patch) => setSettings((current) => ({ ...current, ...patch })),
-      resetAppearance: () => setSettings(DEFAULT_APPLICATION_SETTINGS),
+      resetAppearance: () => setSettings((current) => ({
+        ...current,
+        uiFontSize: DEFAULT_APPLICATION_SETTINGS.uiFontSize,
+        monoFontSize: DEFAULT_APPLICATION_SETTINGS.monoFontSize,
+        density: DEFAULT_APPLICATION_SETTINGS.density,
+        accentColor: DEFAULT_APPLICATION_SETTINGS.accentColor,
+      })),
+      resetAll: () => setSettings(DEFAULT_APPLICATION_SETTINGS),
     }),
     [settings],
   );
