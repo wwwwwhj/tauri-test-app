@@ -11,6 +11,7 @@ import "./WorkbenchTheme.css";
 import "./WorkbenchPolish.css";
 import "./UiPreferences.css";
 import "./ThemeMode.css";
+import "./ThemeLightFix.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
