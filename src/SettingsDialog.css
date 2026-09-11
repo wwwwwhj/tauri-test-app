@@ -1,0 +1,300 @@
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 18, 22, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.application-settings-dialog {
+  display: flex;
+  width: min(820px, calc(100vw - 48px));
+  height: min(570px, calc(100vh - 48px));
+  min-height: 460px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  background: var(--wb-panel);
+  color: var(--wb-text);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.application-settings-header {
+  display: flex;
+  height: 42px;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-tool);
+}
+
+.application-settings-header strong {
+  font-size: calc(var(--app-ui-font-size, 13px) + 1px);
+  font-weight: 650;
+}
+
+.settings-close-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wb-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings-close-button:hover {
+  background: var(--wb-hover);
+  color: var(--wb-text);
+}
+
+.application-settings-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 170px minmax(0, 1fr);
+}
+
+.settings-sections {
+  min-height: 0;
+  padding: 8px 6px;
+  border-right: 1px solid var(--wb-border);
+  background: var(--wb-sidebar);
+}
+
+.settings-sections button {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 9px;
+  background: transparent;
+  color: var(--wb-muted);
+  font-size: var(--app-ui-font-size, 13px);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-sections button:hover {
+  background: var(--wb-hover);
+  color: var(--wb-text);
+}
+
+.settings-sections button.active {
+  background: var(--wb-selected);
+  color: var(--wb-text);
+  box-shadow: inset 2px 0 0 var(--wb-accent);
+}
+
+.settings-content {
+  min-width: 0;
+  overflow: auto;
+  padding: 18px 22px 24px;
+}
+
+.settings-page-heading {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--wb-border-soft);
+}
+
+.settings-page-heading h2 {
+  margin: 0 0 4px;
+  font-size: calc(var(--app-ui-font-size, 13px) + 3px);
+  font-weight: 650;
+}
+
+.settings-page-heading span {
+  color: var(--wb-muted);
+  font-size: calc(var(--app-ui-font-size, 13px) - 2px);
+}
+
+.settings-row {
+  display: grid;
+  min-height: 66px;
+  grid-template-columns: minmax(230px, 1fr) minmax(230px, 0.9fr);
+  align-items: center;
+  gap: 22px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--wb-border-soft);
+}
+
+.settings-row-copy {
+  min-width: 0;
+}
+
+.settings-row-copy strong,
+.settings-row-copy span {
+  display: block;
+}
+
+.settings-row-copy strong {
+  margin-bottom: 4px;
+  color: var(--wb-text);
+  font-size: var(--app-ui-font-size, 13px);
+  font-weight: 600;
+}
+
+.settings-row-copy span {
+  color: var(--wb-muted);
+  font-size: calc(var(--app-ui-font-size, 13px) - 2px);
+  line-height: 1.45;
+}
+
+.settings-row-control {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.settings-row-control select {
+  width: min(240px, 100%);
+  height: 30px;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  padding: 0 8px;
+  background: var(--wb-panel);
+  color: var(--wb-text);
+  font-size: var(--app-ui-font-size, 13px);
+}
+
+.settings-segmented {
+  display: inline-flex;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  background: var(--wb-panel);
+}
+
+.settings-segmented button {
+  min-height: 29px;
+  border: 0;
+  border-right: 1px solid var(--wb-border);
+  padding: 4px 11px;
+  background: transparent;
+  color: var(--wb-muted);
+  font-size: calc(var(--app-ui-font-size, 13px) - 1px);
+  cursor: pointer;
+}
+
+.settings-segmented button:last-child {
+  border-right: 0;
+}
+
+.settings-segmented button:hover {
+  background: var(--wb-hover);
+  color: var(--wb-text);
+}
+
+.settings-segmented button.active {
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+  font-weight: 600;
+}
+
+.font-size-control {
+  display: grid;
+  width: min(260px, 100%);
+  grid-template-columns: minmax(120px, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+}
+
+.font-size-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--wb-accent);
+}
+
+.font-size-control span {
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: var(--wb-tool);
+  color: var(--wb-text);
+  font-family: var(--mono-font);
+  font-size: var(--app-mono-font-size, 11px);
+  text-align: center;
+}
+
+.accent-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.accent-option {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.accent-option:hover {
+  background: var(--wb-hover);
+}
+
+.accent-option.active {
+  border-color: var(--wb-accent);
+  background: var(--wb-accent-soft);
+}
+
+.accent-option span {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.settings-reset-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .settings-backdrop {
+    padding: 10px;
+  }
+
+  .application-settings-dialog {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+  }
+
+  .application-settings-body {
+    grid-template-columns: 116px minmax(0, 1fr);
+  }
+
+  .settings-content {
+    padding: 14px;
+  }
+
+  .settings-row {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .settings-row-control,
+  .accent-options {
+    justify-content: flex-start;
+  }
+}
